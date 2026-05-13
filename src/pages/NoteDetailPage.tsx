@@ -357,6 +357,37 @@ export function NoteDetailPage() {
           ) : null}
         </form>
 
+        {repliesQuery.isError ? (
+          <p className="form-error">{getErrorMessage(repliesQuery.error, 'コメント取得に失敗しました。')}</p>
+        ) : sortedReplies.length === 0 ? (
+          <p className="comment-empty">コメントはまだありません。</p>
+        ) : (
+          <>
+            <div className="comment-list">
+              {sortedReplies.map((reply) => (
+                <article key={reply.id} className="comment-item">
+                  <header>
+                    <strong>{reply.user.name ?? reply.user.username}</strong>
+                    <span>{formatUserHandle(reply.user.username, reply.user.host)}</span>
+                    <time dateTime={reply.createdAt}>{formatDateTimeJa(reply.createdAt)}</time>
+                  </header>
+                  <p>{reply.text ? <EmojiText text={reply.text} emojiMap={emojiMapQuery.data} replaceCustomEmoji={!isRemoteUserHost(reply.user.host, account.instanceHost)} /> : ''}</p>
+                  {reply.files.length > 0 ? <small>添付メディア: {reply.files.length} 件</small> : null}
+                </article>
+              ))}
+            </div>
+
+            <LoadMoreSection
+              hasNextPage={Boolean(repliesQuery.hasNextPage)}
+              isFetchingNextPage={repliesQuery.isFetchingNextPage}
+              onLoadMore={() => {
+                void repliesQuery.fetchNextPage();
+              }}
+              endLabel="これ以上のコメントはありません。"
+            />
+          </>
+        )}
+
         <section className="clip-actions">
           <h3>クリップ</h3>
           {clipsQuery.isPending ? (
@@ -394,37 +425,6 @@ export function NoteDetailPage() {
           )}
           {clipMessage ? <p className="comment-note">{clipMessage}</p> : null}
         </section>
-
-        {repliesQuery.isError ? (
-          <p className="form-error">{getErrorMessage(repliesQuery.error, 'コメント取得に失敗しました。')}</p>
-        ) : sortedReplies.length === 0 ? (
-          <p className="comment-empty">コメントはまだありません。</p>
-        ) : (
-          <>
-            <div className="comment-list">
-              {sortedReplies.map((reply) => (
-                <article key={reply.id} className="comment-item">
-                  <header>
-                    <strong>{reply.user.name ?? reply.user.username}</strong>
-                    <span>{formatUserHandle(reply.user.username, reply.user.host)}</span>
-                    <time dateTime={reply.createdAt}>{formatDateTimeJa(reply.createdAt)}</time>
-                  </header>
-                  <p>{reply.text ? <EmojiText text={reply.text} emojiMap={emojiMapQuery.data} replaceCustomEmoji={!isRemoteUserHost(reply.user.host, account.instanceHost)} /> : ''}</p>
-                  {reply.files.length > 0 ? <small>添付メディア: {reply.files.length} 件</small> : null}
-                </article>
-              ))}
-            </div>
-
-            <LoadMoreSection
-              hasNextPage={Boolean(repliesQuery.hasNextPage)}
-              isFetchingNextPage={repliesQuery.isFetchingNextPage}
-              onLoadMore={() => {
-                void repliesQuery.fetchNextPage();
-              }}
-              endLabel="これ以上のコメントはありません。"
-            />
-          </>
-        )}
       </section>
     </section>
   );
