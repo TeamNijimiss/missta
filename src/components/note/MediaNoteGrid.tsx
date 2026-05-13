@@ -14,18 +14,21 @@ type MediaNoteGridProps = {
 export function MediaNoteGrid({ notes, sensitiveMediaMode = 'blur-sensitive', highlightSensitiveMediaFrame = false, emptyState = null, noteLinkBuilder }: MediaNoteGridProps) {
   const [revealedFileIds, setRevealedFileIds] = useState<Set<string>>(new Set());
 
-  if (notes.length === 0) {
+  const mediaEntries = notes.flatMap((note) => {
+    const mediaFiles = note.files.filter((item) => item.type.startsWith('image/') || item.type.startsWith('video/'));
+    return mediaFiles.map((file) => ({
+      note,
+      file
+    }));
+  });
+
+  if (mediaEntries.length === 0) {
     return <>{emptyState}</>;
   }
 
   return (
     <div className="media-grid">
-      {notes.map((note) => {
-        const file = note.files.find((item) => item.type.startsWith('image/') || item.type.startsWith('video/'));
-        if (!file) {
-          return null;
-        }
-
+      {mediaEntries.map(({ note, file }) => {
         const isSensitiveHidden =
           sensitiveMediaMode === 'blur-all' || (sensitiveMediaMode === 'blur-sensitive' && file.sensitive && !revealedFileIds.has(file.id));
         const canReveal = sensitiveMediaMode === 'blur-sensitive' && file.sensitive;
@@ -33,7 +36,7 @@ export function MediaNoteGrid({ notes, sensitiveMediaMode = 'blur-sensitive', hi
 
         return (
           <div
-            key={note.id}
+            key={`${note.id}-${file.id}`}
             className={`media-grid-item ${isSensitiveHidden ? 'media-sensitive' : ''} ${
               highlightSensitiveMediaFrame && file.sensitive ? 'media-sensitive-emphasis' : ''
             }`}
