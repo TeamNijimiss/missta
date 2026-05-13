@@ -4,6 +4,7 @@ export const ENDPOINTS = {
   i: 'i',
   notesTimeline: 'notes/timeline',
   notesLocalTimeline: 'notes/local-timeline',
+  notesGlobalTimeline: 'notes/global-timeline',
   notesUserListTimeline: 'notes/user-list-timeline',
   notesShow: 'notes/show',
   notesSearchByTag: 'notes/search-by-tag',

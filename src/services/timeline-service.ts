@@ -13,7 +13,7 @@ export type TimelinePage = {
   nextUntilId: string | null;
 };
 
-export type TimelineKind = 'home' | 'local' | 'list';
+export type TimelineKind = 'home' | 'local' | 'global' | 'list';
 export type RealtimeTimelineKind = Exclude<TimelineKind, 'list'>;
 
 export type TimelineStreamingCallbacks = {
@@ -46,6 +46,10 @@ export class TimelineService {
         ...params,
         listId: params.listId ?? ''
       });
+    }
+
+    if (params.kind === 'global') {
+      return this.fetchGlobalTimelinePage(params);
     }
 
     return this.fetchHomeTimelinePage(params);
@@ -144,6 +148,21 @@ export class TimelineService {
     };
   }
 
+  async fetchGlobalTimelinePage(params: { untilId?: string; limit?: number } = {}): Promise<TimelinePage> {
+    const limit = params.limit ?? 20;
+    const rawNotes = await this.client.post<MediaNote[]>(ENDPOINTS.notesGlobalTimeline, {
+      limit,
+      untilId: params.untilId,
+      withFiles: true
+    });
+    const notes = normalizeMediaNotes(rawNotes);
+
+    return {
+      notes: this.filterMediaNotes(notes),
+      nextUntilId: notes.length === limit ? notes[notes.length - 1]?.id ?? null : null
+    };
+  }
+
   async fetchListTimelinePage(params: { listId: string; untilId?: string; limit?: number }): Promise<TimelinePage> {
     if (!params.listId) {
       return { notes: [], nextUntilId: null };
@@ -169,7 +188,7 @@ export class TimelineService {
       return;
     }
 
-    const channel = kind === 'local' ? 'localTimeline' : 'homeTimeline';
+    const channel = kind === 'local' ? 'localTimeline' : kind === 'global' ? 'globalTimeline' : 'homeTimeline';
     this.streaming.connect({
       instanceHost: this.client.instanceHost,
       token: this.client.token,

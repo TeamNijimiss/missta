@@ -525,6 +525,21 @@ a {
   opacity: 0;
 }
 
+.timeline-new-notes-button {
+  position: sticky;
+  top: 74px;
+  z-index: 6;
+  justify-self: center;
+  border: 1px solid #c8d6ff;
+  border-radius: 999px;
+  background: #edf3ff;
+  color: #244174;
+  font-weight: 700;
+  padding: 8px 14px;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(32, 62, 122, 0.18);
+}
+
 .timeline-card {
   border: 1px solid #f2d7de;
   border-radius: 16px;
@@ -1903,6 +1918,10 @@ a {
 
   .bottom-nav {
     display: none;
+  }
+
+  .timeline-new-notes-button {
+    top: 12px;
   }
 }
 

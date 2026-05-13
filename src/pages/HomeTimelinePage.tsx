@@ -24,6 +24,7 @@ import type { TimelineKind } from '@/services/timeline-service';
 const PAGE_SIZE = 20;
 const STREAMING_BUFFER_SIZE = 50;
 const LONG_DISCONNECT_MS = 90_000;
+const TOP_SCROLL_THRESHOLD_PX = 8;
 
 export function HomeTimelinePage() {
   const account = useCurrentAccount();
@@ -33,6 +34,8 @@ export function HomeTimelinePage() {
   const [selectedListId, setSelectedListId] = useState('');
   const [revealedFileIds, setRevealedFileIds] = useState<Set<string>>(new Set());
   const [liveNotes, setLiveNotes] = useState<MediaNote[]>([]);
+  const [pendingLiveNotes, setPendingLiveNotes] = useState<MediaNote[]>([]);
+  const [isAtTop, setIsAtTop] = useState(true);
   const [likedOverrides, setLikedOverrides] = useState<Record<string, boolean>>({});
   const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
   const [reactionCountOverrides, setReactionCountOverrides] = useState<Record<string, number>>({});
@@ -47,9 +50,10 @@ export function HomeTimelinePage() {
   const disconnectedAtRef = useRef<number | null>(null);
   const latestNoteIdRef = useRef<string | null>(null);
   const isRestResyncingRef = useRef(false);
+  const isAtTopRef = useRef(true);
   const setLiveConnection = useLiveConnectionStore((state) => state.setLiveConnection);
   const client = useMemo(() => createMisskeyClient(account), [account]);
-  const canUseStreaming = timelineKind === 'home' || timelineKind === 'local';
+  const canUseStreaming = timelineKind === 'home' || timelineKind === 'local' || timelineKind === 'global';
 
   const services = useMemo(() => {
     if (!client) {
@@ -101,6 +105,30 @@ export function HomeTimelinePage() {
 
   const emojiMapQuery = useEmojiMapQuery(account);
 
+  const queueIncomingNotes = (incomingNotes: MediaNote[]) => {
+    if (incomingNotes.length === 0) {
+      return;
+    }
+
+    if (isAtTopRef.current) {
+      setLiveNotes((prev) => mergeById(incomingNotes, prev).slice(0, STREAMING_BUFFER_SIZE));
+      return;
+    }
+
+    setPendingLiveNotes((prev) => mergeById(incomingNotes, prev).slice(0, STREAMING_BUFFER_SIZE));
+  };
+
+  const flushPendingNotes = () => {
+    setPendingLiveNotes((prevPending) => {
+      if (prevPending.length === 0) {
+        return prevPending;
+      }
+
+      setLiveNotes((prevLive) => mergeById(prevPending, prevLive).slice(0, STREAMING_BUFFER_SIZE));
+      return [];
+    });
+  };
+
   useEffect(() => {
     if (!services) {
       return;
@@ -113,6 +141,7 @@ export function HomeTimelinePage() {
       disconnectedAtRef.current = null;
       setLiveConnection({ active: false, status: 'disconnected', retryInMs: null });
       setLiveNotes([]);
+      setPendingLiveNotes([]);
       return;
     }
 
@@ -126,7 +155,8 @@ export function HomeTimelinePage() {
     }
 
     setLiveNotes([]);
-    const realtimeKind = timelineKind === 'local' ? 'local' : 'home';
+    setPendingLiveNotes([]);
+    const realtimeKind = timelineKind === 'local' ? 'local' : timelineKind === 'global' ? 'global' : 'home';
     services.timeline.connectTimeline(realtimeKind, {
       onMessage: (message) => {
         const rawNote = extractStreamingNote(message);
@@ -140,10 +170,7 @@ export function HomeTimelinePage() {
           return;
         }
 
-        setLiveNotes((prev) => {
-          const deduped = prev.filter((item) => item.id !== note.id);
-          return [note, ...deduped].slice(0, STREAMING_BUFFER_SIZE);
-        });
+        queueIncomingNotes([note]);
       },
       onStatusChange: (event) => {
         const previousStatus = streamingStatusRef.current;
@@ -184,7 +211,7 @@ export function HomeTimelinePage() {
               })
               .then((diffNotes) => {
                 if (diffNotes.length > 0) {
-                  setLiveNotes((prev) => mergeById(diffNotes, prev).slice(0, STREAMING_BUFFER_SIZE));
+                  queueIncomingNotes(diffNotes);
                 }
                 setRestResyncMessage(diffNotes.length > 0 ? `${diffNotes.length}件の差分を再同期しました。` : '再同期しました。新着差分はありませんでした。');
               })
@@ -208,6 +235,32 @@ export function HomeTimelinePage() {
   }, [services, isOnline, timelineKind, canUseStreaming, setLiveConnection]);
 
   useEffect(() => {
+    const updateIsAtTop = () => {
+      const scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
+      const nextIsAtTop = scrollTop <= TOP_SCROLL_THRESHOLD_PX;
+      isAtTopRef.current = nextIsAtTop;
+      setIsAtTop((prev) => (prev === nextIsAtTop ? prev : nextIsAtTop));
+    };
+
+    updateIsAtTop();
+    window.addEventListener('scroll', updateIsAtTop, { passive: true });
+    window.addEventListener('resize', updateIsAtTop);
+
+    return () => {
+      window.removeEventListener('scroll', updateIsAtTop);
+      window.removeEventListener('resize', updateIsAtTop);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isAtTop || pendingLiveNotes.length === 0) {
+      return;
+    }
+
+    flushPendingNotes();
+  }, [isAtTop, pendingLiveNotes.length]);
+
+  useEffect(() => {
     if (timelineKind !== 'list') {
       return;
     }
@@ -227,6 +280,18 @@ export function HomeTimelinePage() {
       return;
     }
     services.timeline.reconnectTimeline();
+  };
+
+  const onShowPendingNotes = () => {
+    if (pendingLiveNotes.length === 0) {
+      return;
+    }
+
+    flushPendingNotes();
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
   };
 
   const pageNotes = timelineQuery.data?.pages.flatMap((page) => page.notes) ?? [];
@@ -365,7 +430,7 @@ export function HomeTimelinePage() {
       <header className="timeline-header">
         <h1>{TIMELINE_LABELS[timelineKind]}</h1>
         <div className="timeline-switcher">
-          {(['home', 'local', 'list'] as const).map((kind) => (
+          {(['home', 'local', 'global', 'list'] as const).map((kind) => (
             <button
               key={kind}
               type="button"
@@ -409,6 +474,11 @@ export function HomeTimelinePage() {
       {timelineKind === 'home' && isRestResyncing ? <p className="timeline-info">接続復帰後の差分を再同期しています...</p> : null}
       {timelineKind === 'home' && !isRestResyncing && restResyncMessage ? <p className={`timeline-info ${isRestResyncMessageFading ? 'fade-out' : ''}`}>{restResyncMessage}</p> : null}
       {actionError ? <p className="form-error">{actionError}</p> : null}
+      {!isAtTop && pendingLiveNotes.length > 0 ? (
+        <button type="button" className="timeline-new-notes-button" onClick={onShowPendingNotes}>
+          新しい投稿 {pendingLiveNotes.length} 件を表示
+        </button>
+      ) : null}
 
       {notes.length === 0 ? (
         <section className="panel">
@@ -472,6 +542,7 @@ export function HomeTimelinePage() {
 const TIMELINE_LABELS: Record<TimelineKind, string> = {
   home: 'ホーム',
   local: 'ローカル',
+  global: 'グローバル',
   list: 'リスト'
 };
 
