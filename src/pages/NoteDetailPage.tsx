@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import { MessageCircleHeart, SendHorizontal } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
@@ -139,6 +139,14 @@ export function NoteDetailPage() {
     }
   }, [clipsQuery.data, selectedClipId]);
 
+  const onRevealFile = useCallback((fileId: string) => {
+    setRevealedFileIds((prev) => {
+      const next = new Set(prev);
+      next.add(fileId);
+      return next;
+    });
+  }, []);
+
   const toggleReaction = async () => {
     if (!services?.reaction || !noteQuery.data || reactionBusy) {
       return;
@@ -245,6 +253,11 @@ export function NoteDetailPage() {
     }
   });
 
+  const sortedReplies = useMemo(() => {
+    const replies = repliesQuery.data?.pages.flatMap((page) => page.replies) ?? [];
+    return [...replies].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }, [repliesQuery.data]);
+
   if (!account) {
     return (
       <section className="panel">
@@ -284,9 +297,6 @@ export function NoteDetailPage() {
   const isFavorited = favoritedOverride ?? Boolean(note.isFavorited);
   const reactionCount = reactionCountOverride ?? Math.max(0, getDisplayedReactionCount(note, settings.aggregateAllReactionsAsHeart));
 
-  const replies = repliesQuery.data?.pages.flatMap((page) => page.replies) ?? [];
-  const sortedReplies = [...replies].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (!commentText.trim() || replyMutation.isPending) {
@@ -308,13 +318,7 @@ export function NoteDetailPage() {
         sensitiveMediaMode={settings.sensitiveMediaMode}
         highlightSensitiveMediaFrame={settings.highlightSensitiveMediaFrame}
         revealedFileIds={revealedFileIds}
-        onRevealFile={(fileId) =>
-          setRevealedFileIds((prev) => {
-            const next = new Set(prev);
-            next.add(fileId);
-            return next;
-          })
-        }
+        onRevealFile={onRevealFile}
         actions={
           <NoteCardActions
             reactionCount={reactionCount}

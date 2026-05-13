@@ -1,9 +1,8 @@
 import { ENDPOINTS } from '@/lib/misskey/endpoints';
+import { isSupportedMediaFile } from '@/lib/media/supported-media';
 import { MisskeyApiClient, normalizeInstanceHost } from '@/lib/misskey/client';
 import { normalizeMediaNotes } from '@/lib/misskey/normalize';
-import type { MediaNote, MisskeyFile, MisskeyUser } from '@/lib/misskey/types';
-
-const SUPPORTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'];
+import type { MediaNote, MisskeyUser } from '@/lib/misskey/types';
 
 export type UserMediaNotesPage = {
   notes: MediaNote[];
@@ -40,7 +39,7 @@ export class UserService {
     const notes = normalizeMediaNotes(rawNotes);
 
     return {
-      notes: notes.filter((note) => note.files?.some((file) => isSupportedMedia(file))),
+      notes: notes.filter((note) => note.files?.some((file) => isSupportedMediaFile(file))),
       nextUntilId: notes.length === limit ? notes[notes.length - 1]?.id ?? null : null
     };
   }
@@ -52,8 +51,4 @@ export class UserService {
   unfollowUser(userId: string) {
     return this.client.post(ENDPOINTS.followingDelete, { userId });
   }
-}
-
-function isSupportedMedia(file: MisskeyFile): boolean {
-  return SUPPORTED_TYPES.includes(file.type);
 }

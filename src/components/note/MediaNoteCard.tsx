@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode, type TouchEvent } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode, type TouchEvent } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { EmojiText } from '@/components/text/EmojiText';
@@ -18,7 +18,7 @@ type MediaNoteCardProps = {
   actions?: ReactNode;
 };
 
-export function MediaNoteCard(props: MediaNoteCardProps) {
+export const MediaNoteCard = memo(function MediaNoteCard(props: MediaNoteCardProps) {
   const { note, localHost, emojiMap, sensitiveMediaMode = 'blur-sensitive', highlightSensitiveMediaFrame = false, revealedFileIds, onRevealFile, actions } = props;
   const [activeIndex, setActiveIndex] = useState(0);
   const [localRevealedFileIds, setLocalRevealedFileIds] = useState<Set<string>>(new Set());
@@ -56,7 +56,7 @@ export function MediaNoteCard(props: MediaNoteCardProps) {
 
   const currentFile = mediaFiles[activeIndex];
   const replaceCustomEmoji = !isRemoteUserHost(note.user.host, localHost);
-  const profilePath = `/users/${note.user.host ?? localHost}/${note.user.username}`;
+  const profilePath = useMemo(() => `/users/${note.user.host ?? localHost}/${note.user.username}`, [localHost, note.user.host, note.user.username]);
 
   const handleReveal = (fileId: string) => {
     if (onRevealFile) {
@@ -200,9 +200,9 @@ export function MediaNoteCard(props: MediaNoteCardProps) {
       {actions ? <div className="card-actions card-actions-icons">{actions}</div> : null}
     </article>
   );
-}
+});
 
-function MediaItem({
+const MediaItem = memo(function MediaItem({
   file,
   isBlurred,
   canReveal,
@@ -232,4 +232,4 @@ function MediaItem({
       ) : null}
     </div>
   );
-}
+});

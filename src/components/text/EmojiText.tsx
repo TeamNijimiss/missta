@@ -1,9 +1,11 @@
+import { memo, useMemo } from 'react';
 import type { EmojiMap } from '@/lib/misskey/emoji';
 import { Link } from 'react-router-dom';
 
 const MFM_LINK_PATTERN = /\??\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g;
 const URL_PATTERN = /https?:\/\/[^\s<>"'`]+/g;
 const EMOJI_TOKEN_PATTERN = /:([a-zA-Z0-9_+\-.]+(?:@[a-zA-Z0-9.\-]+)?):/g;
+const HASHTAG_WORD_CHAR_PATTERN = /[\p{L}\p{N}_]/u;
 
 export function EmojiText({
   text,
@@ -20,7 +22,7 @@ export function EmojiText({
     return null;
   }
 
-  const nodes = parseRichText(text, emojiMap, replaceCustomEmoji);
+  const nodes = useMemo(() => parseRichText(text, emojiMap, replaceCustomEmoji), [text, emojiMap, replaceCustomEmoji]);
 
   return <span className={className ? `emoji-text ${className}` : 'emoji-text'}>{nodes.length > 0 ? nodes : text}</span>;
 }
@@ -203,7 +205,7 @@ function findNextHashtag(text: string, cursor: number): RegExpMatchArray | null 
 }
 
 function isHashtagWordChar(char: string): boolean {
-  return /[\p{L}\p{N}_]/u.test(char);
+  return HASHTAG_WORD_CHAR_PATTERN.test(char);
 }
 
 function trimTrailingPunctuation(url: string): [string, string] {
@@ -215,10 +217,18 @@ function trimTrailingPunctuation(url: string): [string, string] {
   return [matched[1], matched[2] ?? ''];
 }
 
-function InlineEmojiText({ text, emojiMap, replaceCustomEmoji = true }: { text: string; emojiMap?: EmojiMap; replaceCustomEmoji?: boolean }) {
-  const nodes = parseRichTextWithoutLink(text, emojiMap, replaceCustomEmoji);
+const InlineEmojiText = memo(function InlineEmojiText({
+  text,
+  emojiMap,
+  replaceCustomEmoji = true
+}: {
+  text: string;
+  emojiMap?: EmojiMap;
+  replaceCustomEmoji?: boolean;
+}) {
+  const nodes = useMemo(() => parseRichTextWithoutLink(text, emojiMap, replaceCustomEmoji), [text, emojiMap, replaceCustomEmoji]);
   return <>{nodes.length > 0 ? nodes : text}</>;
-}
+});
 
 function parseRichTextWithoutLink(text: string, emojiMap?: EmojiMap, replaceCustomEmoji = true): Array<string | JSX.Element> {
   const nodes: Array<string | JSX.Element> = [];

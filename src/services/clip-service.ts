@@ -1,9 +1,8 @@
 import { ENDPOINTS } from '@/lib/misskey/endpoints';
+import { isSupportedMediaFile } from '@/lib/media/supported-media';
 import { MisskeyApiClient } from '@/lib/misskey/client';
 import { normalizeMediaNotes } from '@/lib/misskey/normalize';
-import type { Clip, MediaNote, MisskeyFile } from '@/lib/misskey/types';
-
-const SUPPORTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'];
+import type { Clip, MediaNote } from '@/lib/misskey/types';
 
 export type ClipNotesPage = {
   notes: MediaNote[];
@@ -32,7 +31,7 @@ export class ClipService {
     const notes = normalizeMediaNotes(rawNotes);
 
     return {
-      notes: notes.filter((note) => note.files?.some((file) => isSupportedMedia(file))),
+      notes: notes.filter((note) => note.files?.some((file) => isSupportedMediaFile(file))),
       nextUntilId: notes.length === limit ? notes[notes.length - 1]?.id ?? null : null
     };
   }
@@ -44,8 +43,4 @@ export class ClipService {
   removeNoteFromClip(clipId: string, noteId: string) {
     return this.client.post(ENDPOINTS.clipsRemoveNote, { clipId, noteId });
   }
-}
-
-function isSupportedMedia(file: MisskeyFile): boolean {
-  return SUPPORTED_TYPES.includes(file.type);
 }

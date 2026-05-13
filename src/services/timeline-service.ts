@@ -1,10 +1,10 @@
 import { ENDPOINTS } from '@/lib/misskey/endpoints';
+import { isSupportedMediaFile } from '@/lib/media/supported-media';
 import { MisskeyApiClient } from '@/lib/misskey/client';
 import { normalizeMediaNotes } from '@/lib/misskey/normalize';
 import { MisskeyStreamingClient, type StreamingStatusEvent } from '@/lib/misskey/streaming';
-import type { MediaNote, MisskeyFile, MisskeyUserList } from '@/lib/misskey/types';
+import type { MediaNote, MisskeyUserList } from '@/lib/misskey/types';
 
-const SUPPORTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'];
 const MAX_EMPTY_PAGE_SKIPS = 5;
 const MAX_REST_SYNC_PAGES = 6;
 
@@ -211,12 +211,8 @@ export class TimelineService {
   }
 
   filterMediaNotes(notes: MediaNote[]) {
-    return notes.filter((note) => note.files?.some((file) => isSupportedMedia(file)));
+    return notes.filter((note) => note.files?.some((file) => isSupportedMediaFile(file)));
   }
-}
-
-function isSupportedMedia(file: MisskeyFile): boolean {
-  return SUPPORTED_TYPES.includes(file.type);
 }
 
 function dedupeById(notes: MediaNote[]): MediaNote[] {

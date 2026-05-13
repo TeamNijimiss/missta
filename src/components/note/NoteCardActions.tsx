@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { memo, type ReactNode } from 'react';
 import { Bookmark, Heart, MessageCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -16,7 +16,7 @@ type NoteCardActionsProps = {
   replyIcon?: ReactNode;
 };
 
-export function NoteCardActions({
+export const NoteCardActions = memo(function NoteCardActions({
   reactionCount,
   replyCount,
   detailTo,
@@ -58,4 +58,4 @@ export function NoteCardActions({
       ) : null}
     </>
   );
-}
+});

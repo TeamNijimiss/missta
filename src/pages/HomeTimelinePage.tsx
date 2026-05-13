@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { RotateCw } from 'lucide-react';
+import { Virtuoso } from 'react-virtuoso';
 import { Link } from 'react-router-dom';
 import { LoadMoreSection } from '@/components/feedback/LoadMoreSection';
 import { QueryErrorPanel } from '@/components/feedback/QueryErrorPanel';
@@ -51,6 +52,7 @@ export function HomeTimelinePage() {
   const latestNoteIdRef = useRef<string | null>(null);
   const isRestResyncingRef = useRef(false);
   const isAtTopRef = useRef(true);
+  const scrollRafIdRef = useRef<number | null>(null);
   const setLiveConnection = useLiveConnectionStore((state) => state.setLiveConnection);
   const client = useMemo(() => createMisskeyClient(account), [account]);
   const canUseStreaming = timelineKind === 'home' || timelineKind === 'local' || timelineKind === 'global';
@@ -236,19 +238,31 @@ export function HomeTimelinePage() {
 
   useEffect(() => {
     const updateIsAtTop = () => {
+      scrollRafIdRef.current = null;
       const scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
       const nextIsAtTop = scrollTop <= TOP_SCROLL_THRESHOLD_PX;
       isAtTopRef.current = nextIsAtTop;
       setIsAtTop((prev) => (prev === nextIsAtTop ? prev : nextIsAtTop));
     };
 
+    const scheduleIsAtTopUpdate = () => {
+      if (scrollRafIdRef.current != null) {
+        return;
+      }
+
+      scrollRafIdRef.current = window.requestAnimationFrame(updateIsAtTop);
+    };
+
     updateIsAtTop();
-    window.addEventListener('scroll', updateIsAtTop, { passive: true });
-    window.addEventListener('resize', updateIsAtTop);
+    window.addEventListener('scroll', scheduleIsAtTopUpdate, { passive: true });
+    window.addEventListener('resize', scheduleIsAtTopUpdate);
 
     return () => {
-      window.removeEventListener('scroll', updateIsAtTop);
-      window.removeEventListener('resize', updateIsAtTop);
+      window.removeEventListener('scroll', scheduleIsAtTopUpdate);
+      window.removeEventListener('resize', scheduleIsAtTopUpdate);
+      if (scrollRafIdRef.current != null) {
+        window.cancelAnimationFrame(scrollRafIdRef.current);
+      }
     };
   }, []);
 
@@ -294,11 +308,29 @@ export function HomeTimelinePage() {
     });
   };
 
-  const pageNotes = timelineQuery.data?.pages.flatMap((page) => page.notes) ?? [];
-  const notes = canUseStreaming ? mergeById(liveNotes, pageNotes) : pageNotes;
+  const pageNotes = useMemo(() => timelineQuery.data?.pages.flatMap((page) => page.notes) ?? [], [timelineQuery.data]);
+  const notes = useMemo(() => (canUseStreaming ? mergeById(liveNotes, pageNotes) : pageNotes), [canUseStreaming, liveNotes, pageNotes]);
+  const notesById = useMemo(() => new Map(notes.map((note) => [note.id, note])), [notes]);
+  const localHost = account?.instanceHost ?? '';
+
+  const onRevealFile = useCallback((fileId: string) => {
+    setRevealedFileIds((prev) => {
+      const next = new Set(prev);
+      next.add(fileId);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     latestNoteIdRef.current = notes[0]?.id ?? null;
+  }, [notes]);
+
+  useEffect(() => {
+    const visibleIds = new Set(notes.map((note) => note.id));
+
+    setLikedOverrides((prev) => pruneRecordByVisibleNoteIds(prev, visibleIds));
+    setFavoriteOverrides((prev) => pruneRecordByVisibleNoteIds(prev, visibleIds));
+    setReactionCountOverrides((prev) => pruneRecordByVisibleNoteIds(prev, visibleIds));
   }, [notes]);
 
   useEffect(() => {
@@ -326,79 +358,136 @@ export function HomeTimelinePage() {
     };
   }, [restResyncMessage]);
 
-  const toggleReaction = async (note: MediaNote) => {
-    if (!services || busyReactionIds.has(note.id)) {
-      return;
-    }
-
-    if (!isOnline) {
-      setActionError('オフライン中は❤リアクションを送信できません。');
-      return;
-    }
-
-    setActionError(null);
-    const isLiked = getIsLiked(note, likedOverrides);
-    const nextLiked = !isLiked;
-    const delta = nextLiked ? 1 : -1;
-    const baseCount = getDisplayedReactionCount(note, settings.aggregateAllReactionsAsHeart);
-    const currentCount = reactionCountOverrides[note.id] ?? baseCount;
-    const nextCount = Math.max(0, currentCount + delta);
-
-    setBusyReactionIds((prev) => new Set(prev).add(note.id));
-    setLikedOverrides((prev) => ({ ...prev, [note.id]: nextLiked }));
-    setReactionCountOverrides((prev) => ({ ...prev, [note.id]: nextCount }));
-
-    try {
-      if (nextLiked) {
-        await services.reaction.createHeartReaction(note.id);
-      } else {
-        await services.reaction.deleteReaction(note.id);
+  const toggleReaction = useCallback(
+    async (noteId: string) => {
+      if (!services || busyReactionIds.has(noteId)) {
+        return;
       }
-    } catch {
-      setActionError('❤リアクションの更新通信に失敗しました。表示は次回再読み込み時に同期されます。');
-    } finally {
-      setBusyReactionIds((prev) => {
-        const next = new Set(prev);
-        next.delete(note.id);
-        return next;
-      });
-    }
-  };
 
-  const toggleFavorite = async (note: MediaNote) => {
-    if (!services || busyFavoriteIds.has(note.id)) {
-      return;
-    }
-
-    if (!isOnline) {
-      setActionError('オフライン中は保存状態を更新できません。');
-      return;
-    }
-
-    setActionError(null);
-    const isFavorited = getIsFavorited(note, favoriteOverrides);
-    const nextFavorited = !isFavorited;
-
-    setBusyFavoriteIds((prev) => new Set(prev).add(note.id));
-    setFavoriteOverrides((prev) => ({ ...prev, [note.id]: nextFavorited }));
-
-    try {
-      if (nextFavorited) {
-        await services.favorite.addFavorite(note.id);
-      } else {
-        await services.favorite.removeFavorite(note.id);
+      const note = notesById.get(noteId);
+      if (!note) {
+        return;
       }
-    } catch {
-      setFavoriteOverrides((prev) => ({ ...prev, [note.id]: isFavorited }));
-      setActionError('保存状態の更新に失敗しました。');
-    } finally {
-      setBusyFavoriteIds((prev) => {
-        const next = new Set(prev);
-        next.delete(note.id);
-        return next;
-      });
-    }
-  };
+
+      if (!isOnline) {
+        setActionError('オフライン中は❤リアクションを送信できません。');
+        return;
+      }
+
+      setActionError(null);
+      const isLiked = getIsLiked(note, likedOverrides);
+      const nextLiked = !isLiked;
+      const delta = nextLiked ? 1 : -1;
+      const baseCount = getDisplayedReactionCount(note, settings.aggregateAllReactionsAsHeart);
+      const currentCount = reactionCountOverrides[noteId] ?? baseCount;
+      const nextCount = Math.max(0, currentCount + delta);
+
+      setBusyReactionIds((prev) => new Set(prev).add(noteId));
+      setLikedOverrides((prev) => ({ ...prev, [noteId]: nextLiked }));
+      setReactionCountOverrides((prev) => ({ ...prev, [noteId]: nextCount }));
+
+      try {
+        if (nextLiked) {
+          await services.reaction.createHeartReaction(noteId);
+        } else {
+          await services.reaction.deleteReaction(noteId);
+        }
+      } catch {
+        setActionError('❤リアクションの更新通信に失敗しました。表示は次回再読み込み時に同期されます。');
+      } finally {
+        setBusyReactionIds((prev) => {
+          const next = new Set(prev);
+          next.delete(noteId);
+          return next;
+        });
+      }
+    },
+    [services, busyReactionIds, notesById, isOnline, likedOverrides, settings.aggregateAllReactionsAsHeart, reactionCountOverrides]
+  );
+
+  const toggleFavorite = useCallback(
+    async (noteId: string) => {
+      if (!services || busyFavoriteIds.has(noteId)) {
+        return;
+      }
+
+      const note = notesById.get(noteId);
+      if (!note) {
+        return;
+      }
+
+      if (!isOnline) {
+        setActionError('オフライン中は保存状態を更新できません。');
+        return;
+      }
+
+      setActionError(null);
+      const isFavorited = getIsFavorited(note, favoriteOverrides);
+      const nextFavorited = !isFavorited;
+
+      setBusyFavoriteIds((prev) => new Set(prev).add(noteId));
+      setFavoriteOverrides((prev) => ({ ...prev, [noteId]: nextFavorited }));
+
+      try {
+        if (nextFavorited) {
+          await services.favorite.addFavorite(noteId);
+        } else {
+          await services.favorite.removeFavorite(noteId);
+        }
+      } catch {
+        setFavoriteOverrides((prev) => ({ ...prev, [noteId]: isFavorited }));
+        setActionError('保存状態の更新に失敗しました。');
+      } finally {
+        setBusyFavoriteIds((prev) => {
+          const next = new Set(prev);
+          next.delete(noteId);
+          return next;
+        });
+      }
+    },
+    [services, busyFavoriteIds, notesById, isOnline, favoriteOverrides]
+  );
+
+  const renderTimelineItem = useCallback(
+    (_index: number, note: MediaNote) => (
+      <div className="timeline-list-row">
+        <HomeTimelineCardItem
+          note={note}
+          localHost={localHost}
+          sensitiveMediaMode={settings.sensitiveMediaMode}
+          highlightSensitiveMediaFrame={settings.highlightSensitiveMediaFrame}
+          emojiMap={emojiMapQuery.data}
+          revealedFileIds={revealedFileIds}
+          onRevealFile={onRevealFile}
+          aggregateAllReactionsAsHeart={settings.aggregateAllReactionsAsHeart}
+          reactionCount={reactionCountOverrides[note.id]}
+          liked={getIsLiked(note, likedOverrides)}
+          favorited={getIsFavorited(note, favoriteOverrides)}
+          reactionDisabled={busyReactionIds.has(note.id) || !isOnline}
+          favoriteDisabled={busyFavoriteIds.has(note.id) || !isOnline}
+          onToggleReaction={toggleReaction}
+          onToggleFavorite={toggleFavorite}
+        />
+      </div>
+    ),
+    [
+      busyFavoriteIds,
+      busyReactionIds,
+      emojiMapQuery.data,
+      favoriteOverrides,
+      isOnline,
+      likedOverrides,
+      localHost,
+      onRevealFile,
+      reactionCountOverrides,
+      revealedFileIds,
+      settings.aggregateAllReactionsAsHeart,
+      settings.highlightSensitiveMediaFrame,
+      settings.sensitiveMediaMode,
+      toggleFavorite,
+      toggleReaction
+    ]
+  );
 
   if (!account) {
     return (
@@ -486,44 +575,14 @@ export function HomeTimelinePage() {
         </section>
       ) : (
         <>
-          <div className="timeline-list">
-            {notes.map((note) => (
-              <MediaNoteCard
-                key={note.id}
-                note={note}
-                localHost={account.instanceHost}
-                sensitiveMediaMode={settings.sensitiveMediaMode}
-                highlightSensitiveMediaFrame={settings.highlightSensitiveMediaFrame}
-                emojiMap={emojiMapQuery.data}
-                revealedFileIds={revealedFileIds}
-                onRevealFile={(fileId) => {
-                  setRevealedFileIds((prev) => {
-                    const next = new Set(prev);
-                    next.add(fileId);
-                    return next;
-                  });
-                }}
-                actions={
-                  <NoteCardActions
-                    reactionCount={reactionCountOverrides[note.id] ?? Math.max(0, getDisplayedReactionCount(note, settings.aggregateAllReactionsAsHeart))}
-                    replyCount={note.replyCount ?? 0}
-                    liked={getIsLiked(note, likedOverrides)}
-                    favorited={getIsFavorited(note, favoriteOverrides)}
-                    reactionDisabled={busyReactionIds.has(note.id) || !isOnline}
-                    favoriteDisabled={busyFavoriteIds.has(note.id) || !isOnline}
-                    onToggleReaction={() => {
-                      void toggleReaction(note);
-                    }}
-                    onToggleFavorite={() => {
-                      void toggleFavorite(note);
-                    }}
-                    detailTo={`/notes/${note.id}`}
-                    detailLabel="コメントを見る"
-                  />
-                }
-              />
-            ))}
-          </div>
+          <Virtuoso
+            className="timeline-virtual-list"
+            useWindowScroll
+            data={notes}
+            computeItemKey={(_index, note) => note.id}
+            increaseViewportBy={{ top: 320, bottom: 640 }}
+            itemContent={renderTimelineItem}
+          />
 
           <LoadMoreSection
             hasNextPage={Boolean(timelineQuery.hasNextPage)}
@@ -538,6 +597,74 @@ export function HomeTimelinePage() {
     </section>
   );
 }
+
+type HomeTimelineCardItemProps = {
+  note: MediaNote;
+  localHost: string;
+  sensitiveMediaMode: ReturnType<typeof useAppSettings>['sensitiveMediaMode'];
+  highlightSensitiveMediaFrame: boolean;
+  emojiMap?: Record<string, string>;
+  revealedFileIds: Set<string>;
+  onRevealFile: (fileId: string) => void;
+  aggregateAllReactionsAsHeart: boolean;
+  reactionCount?: number;
+  liked: boolean;
+  favorited: boolean;
+  reactionDisabled: boolean;
+  favoriteDisabled: boolean;
+  onToggleReaction: (noteId: string) => Promise<void>;
+  onToggleFavorite: (noteId: string) => Promise<void>;
+};
+
+const HomeTimelineCardItem = memo(function HomeTimelineCardItem({
+  note,
+  localHost,
+  sensitiveMediaMode,
+  highlightSensitiveMediaFrame,
+  emojiMap,
+  revealedFileIds,
+  onRevealFile,
+  aggregateAllReactionsAsHeart,
+  reactionCount,
+  liked,
+  favorited,
+  reactionDisabled,
+  favoriteDisabled,
+  onToggleReaction,
+  onToggleFavorite
+}: HomeTimelineCardItemProps) {
+  const displayedReactionCount = reactionCount ?? Math.max(0, getDisplayedReactionCount(note, aggregateAllReactionsAsHeart));
+
+  return (
+    <MediaNoteCard
+      note={note}
+      localHost={localHost}
+      sensitiveMediaMode={sensitiveMediaMode}
+      highlightSensitiveMediaFrame={highlightSensitiveMediaFrame}
+      emojiMap={emojiMap}
+      revealedFileIds={revealedFileIds}
+      onRevealFile={onRevealFile}
+      actions={
+        <NoteCardActions
+          reactionCount={displayedReactionCount}
+          replyCount={note.replyCount ?? 0}
+          liked={liked}
+          favorited={favorited}
+          reactionDisabled={reactionDisabled}
+          favoriteDisabled={favoriteDisabled}
+          onToggleReaction={() => {
+            void onToggleReaction(note.id);
+          }}
+          onToggleFavorite={() => {
+            void onToggleFavorite(note.id);
+          }}
+          detailTo={`/notes/${note.id}`}
+          detailLabel="コメントを見る"
+        />
+      }
+    />
+  );
+});
 
 const TIMELINE_LABELS: Record<TimelineKind, string> = {
   home: 'ホーム',
@@ -562,6 +689,26 @@ function mergeById(primary: MediaNote[], secondary: MediaNote[]): MediaNote[] {
     }
   });
   return [...map.values()];
+}
+
+function pruneRecordByVisibleNoteIds<T>(record: Record<string, T>, visibleIds: Set<string>): Record<string, T> {
+  const keys = Object.keys(record);
+  if (keys.length === 0) {
+    return record;
+  }
+
+  let hasRemoved = false;
+  const next: Record<string, T> = {};
+
+  keys.forEach((key) => {
+    if (visibleIds.has(key)) {
+      next[key] = record[key];
+    } else {
+      hasRemoved = true;
+    }
+  });
+
+  return hasRemoved ? next : record;
 }
 
 function extractStreamingNote(message: unknown): MediaNote | null {

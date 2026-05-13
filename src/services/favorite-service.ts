@@ -1,9 +1,8 @@
 import { ENDPOINTS } from '@/lib/misskey/endpoints';
+import { isSupportedMediaFile } from '@/lib/media/supported-media';
 import { MisskeyApiClient } from '@/lib/misskey/client';
 import { normalizeMediaNote } from '@/lib/misskey/normalize';
-import type { MediaNote, MisskeyFile } from '@/lib/misskey/types';
-
-const SUPPORTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'];
+import type { MediaNote } from '@/lib/misskey/types';
 
 type FavoritesPage = {
   notes: MediaNote[];
@@ -30,7 +29,7 @@ export class FavoriteService {
 
     const notes = rawItems
       .map((item) => extractFavoriteNote(item))
-      .filter((item): item is MediaNote => Boolean(item?.files?.some((file) => isSupportedMedia(file))));
+      .filter((item): item is MediaNote => Boolean(item?.files?.some((file) => isSupportedMediaFile(file))));
 
     const nextUntilId = rawItems.length === limit ? extractCursor(rawItems[rawItems.length - 1]) : null;
     return {
@@ -78,8 +77,4 @@ function isMediaNoteLike(value: unknown): value is MediaNote {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
-}
-
-function isSupportedMedia(file: MisskeyFile): boolean {
-  return SUPPORTED_TYPES.includes(file.type);
 }
