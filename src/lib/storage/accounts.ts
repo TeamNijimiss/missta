@@ -41,6 +41,10 @@ export function getCurrentAccountKey(): string | null {
   return localStorage.getItem(CURRENT_ACCOUNT_KEY);
 }
 
+export function clearCurrentAccountKey(): void {
+  localStorage.removeItem(CURRENT_ACCOUNT_KEY);
+}
+
 export function getCurrentAccount(): Account | null {
   const key = getCurrentAccountKey();
   if (!key) {

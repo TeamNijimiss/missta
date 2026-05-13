@@ -1,4 +1,5 @@
 import { buildMisskeyApiError } from '@/lib/misskey/errors';
+import { recoverFromAuthErrorIfNeeded } from '@/lib/auth/recover-from-auth-error';
 
 type RequestPayload = Record<string, unknown>;
 
@@ -27,7 +28,9 @@ export class MisskeyApiClient {
     });
 
     if (!response.ok) {
-      throw await buildMisskeyApiError(response, endpoint);
+      const error = await buildMisskeyApiError(response, endpoint);
+      recoverFromAuthErrorIfNeeded(error);
+      throw error;
     }
 
     return (await response.json()) as T;
@@ -53,7 +56,9 @@ export class MisskeyApiClient {
     });
 
     if (!response.ok) {
-      throw await buildMisskeyApiError(response, 'drive/files/create');
+      const error = await buildMisskeyApiError(response, 'drive/files/create');
+      recoverFromAuthErrorIfNeeded(error);
+      throw error;
     }
 
     return (await response.json()) as T;
