@@ -1,0 +1,14 @@
+{
+  "name": "misssta-instant",
+  "compatibility_date": "2026-05-13",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  },
+  "routes": [
+    {
+      "pattern": "instant.nijimiss.app",
+      "custom_domain": true
+    }
+  ]
+}
