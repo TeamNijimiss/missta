@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from 'react';
+import type { MouseEvent, PropsWithChildren } from 'react';
 import { Bookmark, House, Paperclip, PlusSquare, Settings, UserRound } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { InstallPromptBanner } from '@/components/pwa/InstallPromptBanner';
@@ -23,6 +23,18 @@ export function AppShell({ children }: PropsWithChildren) {
   const profilePath = account ? `/users/${account.instanceHost}/${account.username}` : null;
   const desktopTabs = profilePath ? [...tabs, { to: profilePath, label: 'プロフィール', icon: UserRound }] : tabs;
 
+  const onClickActiveTab = (event: MouseEvent<HTMLAnchorElement>, isActive: boolean) => {
+    if (!isActive) {
+      return;
+    }
+
+    event.preventDefault();
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
+
   return (
     <div className="app-shell">
       <aside className="side-nav" aria-label="Desktop Global">
@@ -36,7 +48,14 @@ export function AppShell({ children }: PropsWithChildren) {
               : location.pathname.startsWith(tab.to);
 
             return (
-              <Link key={tab.to} to={tab.to} className={isActive ? 'active' : ''} aria-label={tab.label} title={tab.label}>
+              <Link
+                key={tab.to}
+                to={tab.to}
+                className={isActive ? 'active' : ''}
+                aria-label={tab.label}
+                title={tab.label}
+                onClick={(event) => onClickActiveTab(event, isActive)}
+              >
                 {isProfileTab && account?.avatarUrl ? (
                   <img className="side-nav-avatar-icon" src={account.avatarUrl} alt="" />
                 ) : (
@@ -72,7 +91,12 @@ export function AppShell({ children }: PropsWithChildren) {
           const Icon = tab.icon;
           const isComposeTab = tab.to === '/compose';
           return (
-            <Link key={tab.to} to={tab.to} className={`${isActive ? 'active' : ''} ${isComposeTab ? 'compose-tab' : ''}`.trim()}>
+            <Link
+              key={tab.to}
+              to={tab.to}
+              className={`${isActive ? 'active' : ''} ${isComposeTab ? 'compose-tab' : ''}`.trim()}
+              onClick={(event) => onClickActiveTab(event, isActive)}
+            >
               <Icon size={18} strokeWidth={isActive ? 2.4 : 2} />
               {tab.label}
             </Link>

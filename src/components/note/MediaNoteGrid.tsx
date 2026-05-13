@@ -1,8 +1,10 @@
-import { forwardRef, useCallback, useMemo, useState, type HTMLAttributes, type ReactNode } from 'react';
-import { VirtuosoGrid, type GridComponents } from 'react-virtuoso';
-import { Link } from 'react-router-dom';
+import { forwardRef, useCallback, useEffect, useMemo, useState, type HTMLAttributes, type ReactNode } from 'react';
+import { VirtuosoGrid, type GridComponents, type GridStateSnapshot } from 'react-virtuoso';
+import { Link, useLocation } from 'react-router-dom';
 import type { MediaNote, MisskeyFile } from '@/lib/misskey/types';
 import type { SensitiveMediaMode } from '@/lib/storage/settings';
+import { consumeVirtuosoRestoreIntent, setVirtuosoRestoreIntent, shouldRestoreVirtuosoForPath } from '@/lib/virtuoso/restore-intent';
+import { getVirtuosoGridState, setVirtuosoGridState } from '@/lib/virtuoso/restore-state';
 
 type MediaNoteGridProps = {
   notes: MediaNote[];
@@ -32,7 +34,12 @@ const MEDIA_GRID_COMPONENTS: GridComponents = {
 };
 
 export function MediaNoteGrid({ notes, sensitiveMediaMode = 'blur-sensitive', highlightSensitiveMediaFrame = false, emptyState = null, noteLinkBuilder }: MediaNoteGridProps) {
+  const location = useLocation();
   const [revealedFileIds, setRevealedFileIds] = useState<Set<string>>(new Set());
+  const virtuosoStateKey = useMemo(() => `grid:${location.pathname}${location.search}`, [location.pathname, location.search]);
+  const currentPathKey = useMemo(() => `${location.pathname}${location.search}`, [location.pathname, location.search]);
+  const shouldRestoreState = useMemo(() => shouldRestoreVirtuosoForPath(currentPathKey), [currentPathKey]);
+  const restoredGridState = useMemo(() => getVirtuosoGridState(virtuosoStateKey), [virtuosoStateKey]);
 
   const mediaEntries = useMemo(
     () =>
@@ -46,10 +53,6 @@ export function MediaNoteGrid({ notes, sensitiveMediaMode = 'blur-sensitive', hi
       }),
     [notes, noteLinkBuilder]
   );
-
-  if (mediaEntries.length === 0) {
-    return <>{emptyState}</>;
-  }
 
   const onRevealSensitive = useCallback((fileId: string) => {
     setRevealedFileIds((prev) => {
@@ -68,7 +71,12 @@ export function MediaNoteGrid({ notes, sensitiveMediaMode = 'blur-sensitive', hi
 
       return (
         <div className={`media-grid-item ${isSensitiveHidden ? 'media-sensitive' : ''} ${highlightSensitiveMediaFrame && file.sensitive ? 'media-sensitive-emphasis' : ''}`}>
-          <Link to={noteLink}>
+          <Link
+            to={noteLink}
+            onClick={() => {
+              setVirtuosoRestoreIntent(currentPathKey);
+            }}
+          >
             {file.type.startsWith('video/') ? <video src={file.url} preload="metadata" muted playsInline /> : <img src={file.url} alt={file.comment ?? ''} loading="lazy" />}
           </Link>
           {isSensitiveHidden && canReveal ? (
@@ -79,8 +87,27 @@ export function MediaNoteGrid({ notes, sensitiveMediaMode = 'blur-sensitive', hi
         </div>
       );
     },
-    [highlightSensitiveMediaFrame, onRevealSensitive, revealedFileIds, sensitiveMediaMode]
+    [currentPathKey, highlightSensitiveMediaFrame, onRevealSensitive, revealedFileIds, sensitiveMediaMode]
   );
+
+  const onGridStateChanged = useCallback(
+    (state: GridStateSnapshot) => {
+      setVirtuosoGridState(virtuosoStateKey, state);
+    },
+    [virtuosoStateKey]
+  );
+
+  useEffect(() => {
+    if (!shouldRestoreState) {
+      return;
+    }
+
+    consumeVirtuosoRestoreIntent(currentPathKey);
+  }, [currentPathKey, shouldRestoreState]);
+
+  if (mediaEntries.length === 0) {
+    return <>{emptyState}</>;
+  }
 
   return (
     <VirtuosoGrid
@@ -89,6 +116,8 @@ export function MediaNoteGrid({ notes, sensitiveMediaMode = 'blur-sensitive', hi
       data={mediaEntries}
       computeItemKey={(_index, item) => `${item.noteId}-${item.file.id}`}
       components={MEDIA_GRID_COMPONENTS}
+      restoreStateFrom={shouldRestoreState ? restoredGridState : undefined}
+      stateChanged={onGridStateChanged}
       itemContent={renderMediaGridItem}
     />
   );

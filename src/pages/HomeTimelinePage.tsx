@@ -1,8 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { RotateCw } from 'lucide-react';
-import { Virtuoso } from 'react-virtuoso';
-import { Link } from 'react-router-dom';
+import { Virtuoso, type StateSnapshot, type VirtuosoHandle } from 'react-virtuoso';
+import { Link, useLocation } from 'react-router-dom';
 import { LoadMoreSection } from '@/components/feedback/LoadMoreSection';
 import { QueryErrorPanel } from '@/components/feedback/QueryErrorPanel';
 import { MediaNoteCard } from '@/components/note/MediaNoteCard';
@@ -18,6 +18,8 @@ import { useLiveConnectionStore } from '@/lib/hooks/use-live-connection-store';
 import { useOnlineStatus } from '@/lib/hooks/use-online-status';
 import { normalizeMediaNote } from '@/lib/misskey/normalize';
 import { getDisplayedReactionCount, isHeartReaction } from '@/lib/misskey/reactions';
+import { consumeVirtuosoRestoreIntent, shouldRestoreVirtuosoForPath } from '@/lib/virtuoso/restore-intent';
+import { getVirtuosoListState, setVirtuosoListState } from '@/lib/virtuoso/restore-state';
 import type { StreamingStatus } from '@/lib/misskey/streaming';
 import type { MediaNote, MisskeyUserList } from '@/lib/misskey/types';
 import type { TimelineKind } from '@/services/timeline-service';
@@ -29,6 +31,7 @@ const TOP_SCROLL_THRESHOLD_PX = 8;
 
 export function HomeTimelinePage() {
   const account = useCurrentAccount();
+  const location = useLocation();
   const settings = useAppSettings();
   const isOnline = useOnlineStatus();
   const [timelineKind, setTimelineKind] = useState<TimelineKind>('home');
@@ -53,6 +56,8 @@ export function HomeTimelinePage() {
   const isRestResyncingRef = useRef(false);
   const isAtTopRef = useRef(true);
   const scrollRafIdRef = useRef<number | null>(null);
+  const timelineVirtuosoRef = useRef<VirtuosoHandle | null>(null);
+  const timelineStateCaptureRafRef = useRef<number | null>(null);
   const setLiveConnection = useLiveConnectionStore((state) => state.setLiveConnection);
   const client = useMemo(() => createMisskeyClient(account), [account]);
   const canUseStreaming = timelineKind === 'home' || timelineKind === 'local' || timelineKind === 'global';
@@ -312,6 +317,44 @@ export function HomeTimelinePage() {
   const notes = useMemo(() => (canUseStreaming ? mergeById(liveNotes, pageNotes) : pageNotes), [canUseStreaming, liveNotes, pageNotes]);
   const notesById = useMemo(() => new Map(notes.map((note) => [note.id, note])), [notes]);
   const localHost = account?.instanceHost ?? '';
+  const currentPathKey = useMemo(() => `${location.pathname}${location.search}`, [location.pathname, location.search]);
+  const shouldRestoreState = useMemo(() => shouldRestoreVirtuosoForPath(currentPathKey), [currentPathKey]);
+  const virtuosoStateKey = useMemo(() => `timeline:${currentPathKey}`, [currentPathKey]);
+  const restoredVirtuosoState = useMemo(() => getVirtuosoListState(virtuosoStateKey), [virtuosoStateKey]);
+
+  const captureTimelineVirtuosoState = useCallback(() => {
+    timelineVirtuosoRef.current?.getState((state: StateSnapshot) => {
+      setVirtuosoListState(virtuosoStateKey, state);
+    });
+  }, [virtuosoStateKey]);
+
+  const onTimelineRangeChanged = useCallback(() => {
+    if (timelineStateCaptureRafRef.current != null) {
+      return;
+    }
+
+    timelineStateCaptureRafRef.current = window.requestAnimationFrame(() => {
+      timelineStateCaptureRafRef.current = null;
+      captureTimelineVirtuosoState();
+    });
+  }, [captureTimelineVirtuosoState]);
+
+  useEffect(() => {
+    return () => {
+      if (timelineStateCaptureRafRef.current != null) {
+        window.cancelAnimationFrame(timelineStateCaptureRafRef.current);
+      }
+      captureTimelineVirtuosoState();
+    };
+  }, [captureTimelineVirtuosoState]);
+
+  useEffect(() => {
+    if (!shouldRestoreState) {
+      return;
+    }
+
+    consumeVirtuosoRestoreIntent(currentPathKey);
+  }, [currentPathKey, shouldRestoreState]);
 
   const onRevealFile = useCallback((fileId: string) => {
     setRevealedFileIds((prev) => {
@@ -576,11 +619,14 @@ export function HomeTimelinePage() {
       ) : (
         <>
           <Virtuoso
+            ref={timelineVirtuosoRef}
             className="timeline-virtual-list"
             useWindowScroll
             data={notes}
             computeItemKey={(_index, note) => note.id}
             increaseViewportBy={{ top: 320, bottom: 640 }}
+            restoreStateFrom={shouldRestoreState ? restoredVirtuosoState : undefined}
+            rangeChanged={onTimelineRangeChanged}
             itemContent={renderTimelineItem}
           />
 

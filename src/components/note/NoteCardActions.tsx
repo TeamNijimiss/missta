@@ -1,6 +1,7 @@
 import { memo, type ReactNode } from 'react';
 import { Bookmark, Heart, MessageCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { setVirtuosoRestoreIntent } from '@/lib/virtuoso/restore-intent';
 
 type NoteCardActionsProps = {
   reactionCount: number;
@@ -29,6 +30,8 @@ export const NoteCardActions = memo(function NoteCardActions({
   onToggleFavorite,
   replyIcon
 }: NoteCardActionsProps) {
+  const location = useLocation();
+
   return (
     <>
       {onToggleReaction ? (
@@ -52,7 +55,13 @@ export const NoteCardActions = memo(function NoteCardActions({
       ) : null}
 
       {detailTo ? (
-        <Link className="inline-link" to={detailTo}>
+        <Link
+          className="inline-link"
+          to={detailTo}
+          onClick={() => {
+            setVirtuosoRestoreIntent(`${location.pathname}${location.search}`);
+          }}
+        >
           {detailLabel}
         </Link>
       ) : null}
