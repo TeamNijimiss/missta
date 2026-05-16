@@ -1751,6 +1751,45 @@ a {
   opacity: 0.72;
 }
 
+.profile-list-actions {
+  margin-top: 4px;
+  display: grid;
+  gap: 8px;
+}
+
+.profile-list-actions h2 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.profile-list-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.profile-list-action-row select {
+  border: 1px solid #d8dde4;
+  border-radius: 10px;
+  background: #fff;
+  color: #151920;
+  padding: 9px 12px;
+  min-width: 180px;
+}
+
+.profile-list-action-row button {
+  border: 1px solid #d8dde4;
+  border-radius: 10px;
+  background: #eaedf2;
+  color: #151920;
+  font-weight: 700;
+  padding: 9px 14px;
+}
+
+.profile-list-action-row button:disabled {
+  opacity: 0.72;
+}
+
 .profile-tab-nav {
   border-top: 1px solid #dde1e7;
   display: grid;

@@ -23,6 +23,7 @@ export class AuthService {
       'write:reactions',
       'read:favorites',
       'write:favorites',
+      'write:account',
       'write:following',
       'read:clips',
       'write:clips'

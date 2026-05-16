@@ -17,9 +17,9 @@ export function ProfilePage() {
   const { host, username } = useParams();
   const account = useCurrentAccount();
   const settings = useAppSettings();
-  const [followingOverride, setFollowingOverride] = useState<boolean | null>(null);
-  const [followersDelta, setFollowersDelta] = useState(0);
   const [followError, setFollowError] = useState<string | null>(null);
+  const [selectedListId, setSelectedListId] = useState('');
+  const [listActionMessage, setListActionMessage] = useState<string | null>(null);
   const client = useMemo(() => createMisskeyClient(account), [account]);
 
   const service = useMemo(() => {
@@ -65,10 +65,37 @@ export function ProfilePage() {
     getNextPageParam: (lastPage) => lastPage.nextUntilId ?? undefined
   });
 
+  const listsQuery = useQuery({
+    queryKey: ['profileAddableLists', account?.instanceHost, account?.userId],
+    enabled: Boolean(service && userQuery.data?.id && account && userQuery.data.id !== account.userId),
+    refetchOnMount: 'always',
+    queryFn: async () => {
+      if (!service) {
+        return [];
+      }
+
+      return service.fetchUserLists();
+    }
+  });
+
   useEffect(() => {
-    setFollowingOverride(null);
-    setFollowersDelta(0);
-    setFollowError(null);
+    if (!listsQuery.data || listsQuery.data.length === 0) {
+      setSelectedListId('');
+      return;
+    }
+
+    if (!selectedListId) {
+      setSelectedListId(listsQuery.data[0].id);
+      return;
+    }
+
+    if (!listsQuery.data.some((list) => list.id === selectedListId)) {
+      setSelectedListId(listsQuery.data[0].id);
+    }
+  }, [listsQuery.data, selectedListId]);
+
+  useEffect(() => {
+    setListActionMessage(null);
   }, [userQuery.data?.id]);
 
   const followMutation = useMutation({
@@ -82,6 +109,22 @@ export function ProfilePage() {
       } else {
         await service.unfollowUser(userQuery.data.id);
       }
+    }
+  });
+
+  const addToListMutation = useMutation({
+    mutationFn: async () => {
+      if (!service || !userQuery.data || !selectedListId) {
+        throw new Error('リストを選択してください。');
+      }
+
+      await service.addUserToList(selectedListId, userQuery.data.id);
+    },
+    onSuccess: () => {
+      setListActionMessage('リストに追加しました。');
+    },
+    onError: (error) => {
+      setListActionMessage(getErrorMessage(error, 'リスト追加に失敗しました。'));
     }
   });
 
@@ -111,31 +154,37 @@ export function ProfilePage() {
   const notes = notesQuery.data?.pages.flatMap((page) => page.notes) ?? [];
   const displayHost = user.host ?? host;
   const noteCount = user.notesCount ?? notes.length;
-  const followersCount = Math.max(0, (user.followersCount ?? 0) + followersDelta);
+  const followersCount = Math.max(0, user.followersCount ?? 0);
   const followingCount = user.followingCount ?? 0;
   const isOwnProfile = Boolean(account && user.id === account.userId);
-  const isFollowing = followingOverride ?? Boolean(user.isFollowing);
+  const isFollowing = Boolean(user.isFollowing);
 
   const onToggleFollow = async () => {
     if (!service || followMutation.isPending || isOwnProfile) {
       return;
     }
 
-    const previousFollowing = isFollowing;
-    const nextFollowing = !previousFollowing;
+    const nextFollowing = !isFollowing;
     setFollowError(null);
-    setFollowingOverride(nextFollowing);
-    setFollowersDelta((prev) => prev + (nextFollowing ? 1 : -1));
 
     try {
       await followMutation.mutateAsync(nextFollowing);
       await userQuery.refetch();
-      setFollowingOverride(null);
-      setFollowersDelta(0);
     } catch (error) {
-      setFollowingOverride(previousFollowing);
-      setFollowersDelta((prev) => prev + (previousFollowing ? 1 : -1));
       setFollowError(getErrorMessage(error, 'フォロー状態の更新に失敗しました。再ログインが必要な場合があります。'));
+    }
+  };
+
+  const onAddToList = async () => {
+    if (addToListMutation.isPending || !selectedListId) {
+      return;
+    }
+
+    setListActionMessage(null);
+    try {
+      await addToListMutation.mutateAsync();
+    } catch {
+      // handled in mutation onError
     }
   };
 
@@ -184,6 +233,32 @@ export function ProfilePage() {
           )}
         </div>
         {followError ? <p className="form-error">{followError}</p> : null}
+        {!isOwnProfile ? (
+          <section className="profile-list-actions">
+            <h2>リストに追加</h2>
+            {listsQuery.isPending ? (
+              <p className="timeline-info">リストを取得しています...</p>
+            ) : listsQuery.isError ? (
+              <p className="form-error">{getErrorMessage(listsQuery.error, 'リストの取得に失敗しました。')}</p>
+            ) : (listsQuery.data?.length ?? 0) === 0 ? (
+              <p className="timeline-info">利用可能なリストがありません。</p>
+            ) : (
+              <div className="profile-list-action-row">
+                <select value={selectedListId} onChange={(event) => setSelectedListId(event.target.value)} disabled={addToListMutation.isPending}>
+                  {(listsQuery.data ?? []).map((list) => (
+                    <option key={list.id} value={list.id}>
+                      {list.name}
+                    </option>
+                  ))}
+                </select>
+                <button type="button" onClick={() => void onAddToList()} disabled={addToListMutation.isPending || !selectedListId}>
+                  {addToListMutation.isPending ? '追加中...' : '追加'}
+                </button>
+              </div>
+            )}
+            {listActionMessage ? <p className={addToListMutation.isError ? 'form-error' : 'timeline-info'}>{listActionMessage}</p> : null}
+          </section>
+        ) : null}
       </section>
 
       <nav className="profile-tab-nav" aria-label="Profile Media">

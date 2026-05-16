@@ -22,6 +22,7 @@ export const ENDPOINTS = {
   usersShow: 'users/show',
   usersNotes: 'users/notes',
   usersListsList: 'users/lists/list',
+  usersListsPush: 'users/lists/push',
   followingCreate: 'following/create',
   followingDelete: 'following/delete',
   driveFilesCreate: 'drive/files/create',

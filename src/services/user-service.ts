@@ -2,7 +2,7 @@ import { ENDPOINTS } from '@/lib/misskey/endpoints';
 import { isSupportedMediaFile } from '@/lib/media/supported-media';
 import { MisskeyApiClient, normalizeInstanceHost } from '@/lib/misskey/client';
 import { normalizeMediaNotes } from '@/lib/misskey/normalize';
-import type { MediaNote, MisskeyUser } from '@/lib/misskey/types';
+import type { MediaNote, MisskeyUser, MisskeyUserList } from '@/lib/misskey/types';
 
 export type UserMediaNotesPage = {
   notes: MediaNote[];
@@ -21,6 +21,10 @@ export class UserService {
     }
 
     return this.client.post<MisskeyUser>(ENDPOINTS.usersShow, payload);
+  }
+
+  fetchUserLists() {
+    return this.client.post<MisskeyUserList[]>(ENDPOINTS.usersListsList);
   }
 
   async fetchUserMediaNotes(userId: string) {
@@ -50,5 +54,9 @@ export class UserService {
 
   unfollowUser(userId: string) {
     return this.client.post(ENDPOINTS.followingDelete, { userId });
+  }
+
+  addUserToList(listId: string, userId: string) {
+    return this.client.post(ENDPOINTS.usersListsPush, { listId, userId });
   }
 }
