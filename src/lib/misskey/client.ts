@@ -33,7 +33,7 @@ export class MisskeyApiClient {
       throw error;
     }
 
-    return (await response.json()) as T;
+    return (await parseJsonIfPresent<T>(response)) as T;
   }
 
   async upload<T>(file: File, payload: RequestPayload = {}): Promise<T> {
@@ -61,7 +61,7 @@ export class MisskeyApiClient {
       throw error;
     }
 
-    return (await response.json()) as T;
+    return (await parseJsonIfPresent<T>(response)) as T;
   }
 }
 
@@ -75,4 +75,17 @@ export function normalizeInstanceHost(value: string): string {
   }
 
   return hostOnly;
+}
+
+async function parseJsonIfPresent<T>(response: Response): Promise<T | undefined> {
+  if (response.status === 204 || response.status === 205) {
+    return undefined;
+  }
+
+  const text = await response.text();
+  if (!text) {
+    return undefined;
+  }
+
+  return JSON.parse(text) as T;
 }
