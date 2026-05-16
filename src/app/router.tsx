@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { AppShell } from '@/components/layout/AppShell';
 import { AuthCallbackPage } from '@/pages/AuthCallbackPage';
 import { InstanceSelectPage } from '@/pages/InstanceSelectPage';
+import { AboutPage } from '@/pages/AboutPage';
 import { ClipDetailPage } from '@/pages/ClipDetailPage';
 import { ClipsPage } from '@/pages/ClipsPage';
 import { ComposePage } from '@/pages/ComposePage';
@@ -52,6 +53,10 @@ export const router = createBrowserRouter([
       {
         path: '/home',
         element: <HomeTimelinePage />
+      },
+      {
+        path: '/about',
+        element: <AboutPage />
       },
       {
         path: '/compose',

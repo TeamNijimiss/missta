@@ -2,6 +2,7 @@ import type { MouseEvent, PropsWithChildren } from 'react';
 import { Bookmark, House, Paperclip, PlusSquare, Settings, UserRound } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { InstallPromptBanner } from '@/components/pwa/InstallPromptBanner';
+import { appConfig } from '@/lib/app-config';
 import { useCurrentAccount } from '@/lib/hooks/use-current-account';
 import { useLiveConnectionStore } from '@/lib/hooks/use-live-connection-store';
 import type { StreamingStatus } from '@/lib/misskey/streaming';
@@ -38,7 +39,10 @@ export function AppShell({ children }: PropsWithChildren) {
   return (
     <div className="app-shell">
       <aside className="side-nav" aria-label="Desktop Global">
-        <p className="side-nav-brand">みすすた！β</p>
+        <Link className="side-nav-brand" to="/about" aria-label={appConfig.appName} title={appConfig.appName}>
+          <img className="app-brand-icon" src="/favicon.svg" alt="" />
+          <span className="side-nav-tooltip">{appConfig.appName}</span>
+        </Link>
         <nav className="side-nav-links">
           {desktopTabs.map((tab) => {
             const Icon = tab.icon;
@@ -77,7 +81,10 @@ export function AppShell({ children }: PropsWithChildren) {
       <div className="shell-main">
       <header className="top-bar">
         <div>
-          <p className="top-bar-title">みすすた！β</p>
+          <Link className="top-bar-title" to="/about">
+            <img className="app-brand-icon" src="/favicon.svg" alt="" />
+            {appConfig.appName}
+          </Link>
           <p className="top-bar-subtitle">{account ? `${account.username}@${account.instanceHost}` : 'Misskey Media Client'}</p>
         </div>
       </header>

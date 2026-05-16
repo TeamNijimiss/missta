@@ -55,6 +55,12 @@ a {
 
 .side-nav-brand {
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 38px;
+  position: relative;
   font-size: 0.95rem;
   font-weight: 800;
   text-align: center;
@@ -159,7 +165,9 @@ a {
 }
 
 .side-nav-links a:hover .side-nav-tooltip,
-.side-nav-links a:focus-visible .side-nav-tooltip {
+.side-nav-links a:focus-visible .side-nav-tooltip,
+.side-nav-brand:hover .side-nav-tooltip,
+.side-nav-brand:focus-visible .side-nav-tooltip {
   opacity: 1;
 }
 
@@ -180,9 +188,46 @@ a {
 
 .top-bar-title {
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 1.1rem;
   font-weight: 800;
   letter-spacing: 0.01em;
+}
+
+.app-brand-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.about-page {
+  display: grid;
+  gap: 14px;
+}
+
+.about-version {
+  margin: -4px 0 0;
+  color: #596273;
+  font-size: 0.9rem;
+}
+
+.about-section {
+  border-top: 1px solid #dde1e7;
+  padding-top: 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.about-section h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.about-section p {
+  margin: 0;
 }
 
 .top-bar-subtitle {
@@ -2009,6 +2054,15 @@ a {
 @media (min-width: 1024px) {
   .app-shell {
     padding-left: 92px;
+  }
+
+  .side-nav-brand {
+    min-height: 64px;
+  }
+
+  .side-nav-brand .app-brand-icon {
+    width: 60px;
+    height: 60px;
   }
 
   .side-nav {
