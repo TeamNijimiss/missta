@@ -1852,6 +1852,47 @@ a {
   opacity: 0.72;
 }
 
+.auth-scope-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  background: rgba(11, 15, 22, 0.48);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.auth-scope-modal {
+  width: min(460px, 100%);
+  border: 1px solid #d8dde4;
+  border-radius: 14px;
+  background: #fff;
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+}
+
+.auth-scope-modal h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.auth-scope-modal p {
+  margin: 0;
+  color: #4f5866;
+  line-height: 1.5;
+}
+
+.auth-scope-modal-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.auth-scope-modal-actions button {
+  width: 100%;
+}
+
 .profile-tab-nav {
   border-top: 1px solid #dde1e7;
   display: grid;

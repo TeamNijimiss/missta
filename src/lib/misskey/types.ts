@@ -65,4 +65,5 @@ export type Account = {
   token: string;
   createdAt: string;
   lastUsedAt: string;
+  authScopeVersion?: number;
 };

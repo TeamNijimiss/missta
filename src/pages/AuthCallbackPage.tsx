@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { AuthService } from '@/services/auth-service';
+import { AUTH_SCOPE_VERSION, AuthService } from '@/services/auth-service';
 import { normalizeInstanceHost } from '@/lib/misskey/client';
 import { setCurrentAccountKey, upsertAccount } from '@/lib/storage/accounts';
 import { clearPendingMiAuth, loadPendingMiAuth, pushRecentInstance } from '@/lib/storage/auth';
@@ -52,7 +52,8 @@ export function AuthCallbackPage() {
           avatarUrl: result.user.avatarUrl,
           token: result.token,
           createdAt: now,
-          lastUsedAt: now
+          lastUsedAt: now,
+          authScopeVersion: AUTH_SCOPE_VERSION
         });
 
         setCurrentAccountKey(host, result.user.id);

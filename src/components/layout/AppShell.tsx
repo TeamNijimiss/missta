@@ -1,11 +1,14 @@
-import type { MouseEvent, PropsWithChildren } from 'react';
+import { useEffect, useMemo, useState, type MouseEvent, type PropsWithChildren } from 'react';
 import { Bookmark, House, Paperclip, PlusSquare, Settings, UserRound } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { InstallPromptBanner } from '@/components/pwa/InstallPromptBanner';
 import { appConfig } from '@/lib/app-config';
 import { useCurrentAccount } from '@/lib/hooks/use-current-account';
 import { useLiveConnectionStore } from '@/lib/hooks/use-live-connection-store';
+import { pushRecentInstance, savePendingMiAuth } from '@/lib/storage/auth';
+import { AUTH_SCOPE_VERSION, AuthService } from '@/services/auth-service';
 import type { StreamingStatus } from '@/lib/misskey/streaming';
+import type { Account } from '@/lib/misskey/types';
 
 const tabs = [
   { to: '/home', label: 'ホーム', icon: House },
@@ -18,11 +21,35 @@ const tabs = [
 export function AppShell({ children }: PropsWithChildren) {
   const location = useLocation();
   const account = useCurrentAccount();
+  const authService = useMemo(() => new AuthService(), []);
   const liveActive = useLiveConnectionStore((state) => state.active);
   const liveStatus = useLiveConnectionStore((state) => state.status);
   const liveRetryInMs = useLiveConnectionStore((state) => state.retryInMs);
   const profilePath = account ? `/users/${account.instanceHost}/${account.username}` : null;
   const desktopTabs = profilePath ? [...tabs, { to: profilePath, label: 'プロフィール', icon: UserRound }] : tabs;
+  const [showScopeUpgradeModal, setShowScopeUpgradeModal] = useState(false);
+  const [scopeUpgradeError, setScopeUpgradeError] = useState<string | null>(null);
+  const [startingScopeUpgrade, setStartingScopeUpgrade] = useState(false);
+
+  useEffect(() => {
+    if (!account) {
+      setShowScopeUpgradeModal(false);
+      return;
+    }
+
+    if (!isScopeUpgradeRequired(account)) {
+      setShowScopeUpgradeModal(false);
+      return;
+    }
+
+    const key = toAccountKey(account);
+    if (isScopeUpgradePromptDismissed(key)) {
+      setShowScopeUpgradeModal(false);
+      return;
+    }
+
+    setShowScopeUpgradeModal(true);
+  }, [account]);
 
   const onClickActiveTab = (event: MouseEvent<HTMLAnchorElement>, isActive: boolean) => {
     if (!isActive) {
@@ -34,6 +61,35 @@ export function AppShell({ children }: PropsWithChildren) {
       top: 0,
       behavior: 'smooth'
     });
+  };
+
+  const onDismissScopeUpgrade = () => {
+    if (!account) {
+      return;
+    }
+
+    dismissScopeUpgradePrompt(toAccountKey(account));
+    setShowScopeUpgradeModal(false);
+  };
+
+  const onStartScopeUpgrade = () => {
+    if (!account) {
+      return;
+    }
+
+    setStartingScopeUpgrade(true);
+    setScopeUpgradeError(null);
+
+    try {
+      const { host, sessionId, authUrl } = authService.startMiAuth(account.instanceHost);
+      savePendingMiAuth({ instanceHost: host, sessionId });
+      pushRecentInstance(host);
+      window.location.assign(authUrl);
+    } catch (error) {
+      setStartingScopeUpgrade(false);
+      const message = error instanceof Error ? error.message : '再認証の開始に失敗しました。';
+      setScopeUpgradeError(message);
+    }
   };
 
   return (
@@ -110,6 +166,27 @@ export function AppShell({ children }: PropsWithChildren) {
           );
         })}
       </nav>
+
+      {showScopeUpgradeModal && account ? (
+        <div className="auth-scope-modal-overlay" role="dialog" aria-modal="true" aria-label="再ログインの案内">
+          <section className="auth-scope-modal">
+            <h2>再ログインが必要です</h2>
+            <p>
+              権限仕様が更新されました。{account.username}@{account.instanceHost}
+              を再認証すると最新機能を利用できます。
+            </p>
+            {scopeUpgradeError ? <p className="form-error">{scopeUpgradeError}</p> : null}
+            <div className="auth-scope-modal-actions">
+              <button type="button" className="secondary-icon-button" onClick={onDismissScopeUpgrade} disabled={startingScopeUpgrade}>
+                後で
+              </button>
+              <button type="button" className="primary-icon-button" onClick={onStartScopeUpgrade} disabled={startingScopeUpgrade}>
+                {startingScopeUpgrade ? '開始中...' : '再ログインする'}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -141,3 +218,53 @@ function toLiveTitle(status: StreamingStatus, retryInMs: number | null): string 
 
   return 'リアルタイム停止中';
 }
+
+function isScopeUpgradeRequired(account: Account): boolean {
+  return getAuthScopeVersion(account) < AUTH_SCOPE_VERSION;
+}
+
+function getAuthScopeVersion(account: Account): number {
+  if (typeof account.authScopeVersion === 'number' && Number.isFinite(account.authScopeVersion)) {
+    return account.authScopeVersion;
+  }
+
+  return 1;
+}
+
+function toAccountKey(account: Account): string {
+  return `${account.instanceHost}:${account.userId}`;
+}
+
+function dismissScopeUpgradePrompt(accountKey: string): void {
+  const dismissed = loadDismissedScopeUpgradePrompts();
+  dismissed[accountKey] = AUTH_SCOPE_VERSION;
+  sessionStorage.setItem(SCOPE_UPGRADE_DISMISSED_KEY, JSON.stringify(dismissed));
+}
+
+function isScopeUpgradePromptDismissed(accountKey: string): boolean {
+  const dismissed = loadDismissedScopeUpgradePrompts();
+  const version = dismissed[accountKey];
+  return typeof version === 'number' && version >= AUTH_SCOPE_VERSION;
+}
+
+function loadDismissedScopeUpgradePrompts(): Record<string, number> {
+  const raw = sessionStorage.getItem(SCOPE_UPGRADE_DISMISSED_KEY);
+  if (!raw) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const sanitized: Record<string, number> = {};
+    Object.entries(parsed).forEach(([key, value]) => {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        sanitized[key] = value;
+      }
+    });
+    return sanitized;
+  } catch {
+    return {};
+  }
+}
+
+const SCOPE_UPGRADE_DISMISSED_KEY = 'misssta.auth.scopeUpgradeDismissed';
