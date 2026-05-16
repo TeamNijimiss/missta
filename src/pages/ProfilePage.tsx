@@ -20,6 +20,7 @@ export function ProfilePage() {
   const [followError, setFollowError] = useState<string | null>(null);
   const [selectedListId, setSelectedListId] = useState('');
   const [listActionMessage, setListActionMessage] = useState<string | null>(null);
+  const [isListPickerOpen, setIsListPickerOpen] = useState(false);
   const client = useMemo(() => createMisskeyClient(account), [account]);
 
   const service = useMemo(() => {
@@ -96,6 +97,7 @@ export function ProfilePage() {
 
   useEffect(() => {
     setListActionMessage(null);
+    setIsListPickerOpen(false);
   }, [userQuery.data?.id]);
 
   const followMutation = useMutation({
@@ -183,6 +185,7 @@ export function ProfilePage() {
     setListActionMessage(null);
     try {
       await addToListMutation.mutateAsync();
+      setIsListPickerOpen(false);
     } catch {
       // handled in mutation onError
     }
@@ -227,23 +230,41 @@ export function ProfilePage() {
               あなたのプロフィール
             </button>
           ) : (
-            <button type="button" className={isFollowing ? 'active' : ''} onClick={() => void onToggleFollow()} disabled={followMutation.isPending}>
-              {followMutation.isPending ? '更新中...' : isFollowing ? 'フォロー中' : 'フォロー'}
-            </button>
+            <>
+              <button type="button" className={isFollowing ? 'active' : ''} onClick={() => void onToggleFollow()} disabled={followMutation.isPending}>
+                {followMutation.isPending ? '更新中...' : isFollowing ? 'フォロー中' : 'フォロー'}
+              </button>
+              <button type="button" onClick={() => setIsListPickerOpen(true)} disabled={listsQuery.isPending || listsQuery.isError || (listsQuery.data?.length ?? 0) === 0}>
+                {listsQuery.isPending ? '読込中...' : 'リストに追加'}
+              </button>
+            </>
           )}
         </div>
         {followError ? <p className="form-error">{followError}</p> : null}
-        {!isOwnProfile ? (
-          <section className="profile-list-actions">
+        {!isOwnProfile && listsQuery.isError ? <p className="form-error">{getErrorMessage(listsQuery.error, 'リストの取得に失敗しました。')}</p> : null}
+        {!isOwnProfile && !listsQuery.isPending && !listsQuery.isError && (listsQuery.data?.length ?? 0) === 0 ? (
+          <p className="timeline-info">利用可能なリストがありません。</p>
+        ) : null}
+        {listActionMessage ? <p className={addToListMutation.isError ? 'form-error' : 'timeline-info'}>{listActionMessage}</p> : null}
+      </section>
+
+      {!isOwnProfile && isListPickerOpen ? (
+        <div className="profile-list-modal-overlay" role="dialog" aria-modal="true" aria-label="リスト選択" onClick={() => setIsListPickerOpen(false)}>
+          <section className="profile-list-modal" onClick={(event) => event.stopPropagation()}>
             <h2>リストに追加</h2>
             {listsQuery.isPending ? (
               <p className="timeline-info">リストを取得しています...</p>
             ) : listsQuery.isError ? (
-              <p className="form-error">{getErrorMessage(listsQuery.error, 'リストの取得に失敗しました。')}</p>
+              <>
+                <p className="form-error">{getErrorMessage(listsQuery.error, 'リストの取得に失敗しました。')}</p>
+                <button type="button" onClick={() => void listsQuery.refetch()}>
+                  再試行
+                </button>
+              </>
             ) : (listsQuery.data?.length ?? 0) === 0 ? (
               <p className="timeline-info">利用可能なリストがありません。</p>
             ) : (
-              <div className="profile-list-action-row">
+              <>
                 <select value={selectedListId} onChange={(event) => setSelectedListId(event.target.value)} disabled={addToListMutation.isPending}>
                   {(listsQuery.data ?? []).map((list) => (
                     <option key={list.id} value={list.id}>
@@ -251,15 +272,19 @@ export function ProfilePage() {
                     </option>
                   ))}
                 </select>
-                <button type="button" onClick={() => void onAddToList()} disabled={addToListMutation.isPending || !selectedListId}>
-                  {addToListMutation.isPending ? '追加中...' : '追加'}
-                </button>
-              </div>
+                <div className="profile-list-modal-actions">
+                  <button type="button" onClick={() => setIsListPickerOpen(false)} disabled={addToListMutation.isPending}>
+                    キャンセル
+                  </button>
+                  <button type="button" onClick={() => void onAddToList()} disabled={addToListMutation.isPending || !selectedListId}>
+                    {addToListMutation.isPending ? '追加中...' : '追加'}
+                  </button>
+                </div>
+              </>
             )}
-            {listActionMessage ? <p className={addToListMutation.isError ? 'form-error' : 'timeline-info'}>{listActionMessage}</p> : null}
           </section>
-        ) : null}
-      </section>
+        </div>
+      ) : null}
 
       <nav className="profile-tab-nav" aria-label="Profile Media">
         <button type="button" className="active" title="投稿">

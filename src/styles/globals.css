@@ -1796,42 +1796,55 @@ a {
   opacity: 0.72;
 }
 
-.profile-list-actions {
-  margin-top: 4px;
+.profile-list-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(11, 15, 22, 0.45);
   display: grid;
-  gap: 8px;
+  place-items: center;
+  padding: 16px;
 }
 
-.profile-list-actions h2 {
+.profile-list-modal {
+  width: min(420px, 100%);
+  border: 1px solid #d8dde4;
+  border-radius: 14px;
+  background: #fff;
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.profile-list-modal h2 {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 1rem;
 }
 
-.profile-list-action-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.profile-list-action-row select {
+.profile-list-modal select {
   border: 1px solid #d8dde4;
   border-radius: 10px;
   background: #fff;
   color: #151920;
-  padding: 9px 12px;
-  min-width: 180px;
+  padding: 10px 12px;
 }
 
-.profile-list-action-row button {
+.profile-list-modal-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.profile-list-modal-actions button {
   border: 1px solid #d8dde4;
   border-radius: 10px;
   background: #eaedf2;
   color: #151920;
   font-weight: 700;
-  padding: 9px 14px;
+  padding: 10px 12px;
 }
 
-.profile-list-action-row button:disabled {
+.profile-list-modal-actions button:disabled {
   opacity: 0.72;
 }
 
