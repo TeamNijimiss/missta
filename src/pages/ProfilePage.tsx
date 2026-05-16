@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
-import { Bookmark, Grid3X3, UserRound } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { LoadMoreSection } from '@/components/feedback/LoadMoreSection';
 import { QueryErrorPanel } from '@/components/feedback/QueryErrorPanel';
@@ -286,17 +285,7 @@ export function ProfilePage() {
         </div>
       ) : null}
 
-      <nav className="profile-tab-nav" aria-label="Profile Media">
-        <button type="button" className="active" title="投稿">
-          <Grid3X3 size={17} />
-        </button>
-        <button type="button" title="保存済み">
-          <Bookmark size={17} />
-        </button>
-        <button type="button" title="タグ付け">
-          <UserRound size={17} />
-        </button>
-      </nav>
+      <div className="profile-media-divider" aria-hidden="true" />
 
       {notesQuery.isPending ? (
         <p className="profile-loading">投稿を読み込み中...</p>

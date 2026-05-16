@@ -1796,6 +1796,10 @@ a {
   opacity: 0.72;
 }
 
+.profile-media-divider {
+  border-top: 1px solid #dde1e7;
+}
+
 .profile-list-modal-overlay {
   position: fixed;
   inset: 0;
