@@ -18,6 +18,7 @@ import { useLiveConnectionStore } from '@/lib/hooks/use-live-connection-store';
 import { useOnlineStatus } from '@/lib/hooks/use-online-status';
 import { normalizeMediaNote } from '@/lib/misskey/normalize';
 import { getDisplayedReactionCount, isHeartReaction } from '@/lib/misskey/reactions';
+import { loadHomeTimelineView, saveHomeTimelineView } from '@/lib/storage/home-timeline';
 import { consumeVirtuosoRestoreIntent, shouldRestoreVirtuosoForPath } from '@/lib/virtuoso/restore-intent';
 import { getVirtuosoListState, setVirtuosoListState } from '@/lib/virtuoso/restore-state';
 import type { StreamingStatus } from '@/lib/misskey/streaming';
@@ -32,10 +33,12 @@ const TOP_SCROLL_THRESHOLD_PX = 8;
 export function HomeTimelinePage() {
   const account = useCurrentAccount();
   const location = useLocation();
+  const accountKey = account ? `${account.instanceHost}:${account.userId}` : '';
+  const initialTimelineView = useMemo(() => loadHomeTimelineView(accountKey), [accountKey]);
   const settings = useAppSettings();
   const isOnline = useOnlineStatus();
-  const [timelineKind, setTimelineKind] = useState<TimelineKind>('home');
-  const [selectedListId, setSelectedListId] = useState('');
+  const [timelineKind, setTimelineKind] = useState<TimelineKind>(initialTimelineView.timelineKind);
+  const [selectedListId, setSelectedListId] = useState(initialTimelineView.selectedListId);
   const [revealedFileIds, setRevealedFileIds] = useState<Set<string>>(new Set());
   const [liveNotes, setLiveNotes] = useState<MediaNote[]>([]);
   const [pendingLiveNotes, setPendingLiveNotes] = useState<MediaNote[]>([]);
@@ -293,6 +296,22 @@ export function HomeTimelinePage() {
       setSelectedListId(lists[0].id);
     }
   }, [timelineKind, selectedListId, userListsQuery.data]);
+
+  useEffect(() => {
+    setTimelineKind(initialTimelineView.timelineKind);
+    setSelectedListId(initialTimelineView.selectedListId);
+  }, [initialTimelineView.timelineKind, initialTimelineView.selectedListId]);
+
+  useEffect(() => {
+    if (!accountKey) {
+      return;
+    }
+
+    saveHomeTimelineView(accountKey, {
+      timelineKind,
+      selectedListId
+    });
+  }, [accountKey, timelineKind, selectedListId]);
 
   const onReconnectTimeline = () => {
     if (!services || !isOnline || !canUseStreaming) {
