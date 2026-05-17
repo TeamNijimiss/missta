@@ -325,10 +325,14 @@ export function HomeTimelinePage() {
       return;
     }
 
-    flushPendingNotes();
+    timelineVirtuosoRef.current?.scrollToIndex({
+      index: 0,
+      align: 'start',
+      behavior: 'auto'
+    });
     window.scrollTo({
       top: 0,
-      behavior: 'smooth'
+      behavior: 'auto'
     });
   };
 
