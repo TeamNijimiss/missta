@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
-import { getCurrentAccount } from '@/lib/storage/accounts';
+import { useMemo, useSyncExternalStore } from 'react';
+import { getCurrentAccount, getCurrentAccountSnapshot, subscribeCurrentAccount } from '@/lib/storage/accounts';
 
 export function useCurrentAccount() {
-  return useMemo(() => getCurrentAccount(), []);
+  const snapshot = useSyncExternalStore(subscribeCurrentAccount, getCurrentAccountSnapshot, () => '');
+  return useMemo(() => getCurrentAccount(), [snapshot]);
 }
