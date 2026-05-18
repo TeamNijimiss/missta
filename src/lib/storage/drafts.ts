@@ -6,7 +6,7 @@ export type ComposeDraft = {
   createdAt: string;
 };
 
-const DRAFT_KEY = 'misssta.compose.draft';
+const DRAFT_KEY = 'missta.compose.draft';
 
 export function loadDraft(): ComposeDraft | null {
   const raw = localStorage.getItem(DRAFT_KEY);

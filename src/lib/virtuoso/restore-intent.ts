@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'misssta:virtuoso-restore-intent:v1';
+const STORAGE_KEY = 'missta:virtuoso-restore-intent:v1';
 const INTENT_TTL_MS = 30 * 60 * 1000;
 
 type RestoreIntent = {

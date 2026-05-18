@@ -1,5 +1,5 @@
-const PENDING_MIAUTH_KEY = 'misssta.auth.pending';
-const RECENT_INSTANCES_KEY = 'misssta.instances.recent';
+const PENDING_MIAUTH_KEY = 'missta.auth.pending';
+const RECENT_INSTANCES_KEY = 'missta.instances.recent';
 const MAX_RECENT_INSTANCES = 5;
 
 export type PendingMiAuth = {

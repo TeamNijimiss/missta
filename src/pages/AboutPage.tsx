@@ -4,6 +4,7 @@ export function AboutPage() {
   return (
     <section className="panel about-page">
       <h1>{appConfig.appName}</h1>
+      <p className="about-version">{appConfig.appNameLatin}</p>
       <p className="about-version">Version {appConfig.appVersion}</p>
 
       <section className="about-section">

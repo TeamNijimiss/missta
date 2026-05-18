@@ -5,7 +5,7 @@ type PersistedVirtuosoState = {
   grid: Record<string, GridStateSnapshot>;
 };
 
-const STORAGE_KEY = 'misssta:virtuoso-state:v1';
+const STORAGE_KEY = 'missta:virtuoso-state:v1';
 const MAX_ENTRY_COUNT = 120;
 
 let cache: PersistedVirtuosoState | null = null;

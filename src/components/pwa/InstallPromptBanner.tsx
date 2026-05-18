@@ -6,7 +6,7 @@ type DeferredInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 };
 
-const INSTALL_BANNER_DISMISSED_KEY = 'misssta.installBanner.dismissed';
+const INSTALL_BANNER_DISMISSED_KEY = 'missta.installBanner.dismissed';
 
 export function InstallPromptBanner() {
   const [deferredPrompt, setDeferredPrompt] = useState<DeferredInstallPromptEvent | null>(null);

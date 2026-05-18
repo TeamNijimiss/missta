@@ -7,7 +7,7 @@ export type AppSettings = {
   highlightSensitiveMediaFrame: boolean;
 };
 
-const SETTINGS_KEY = 'misssta.settings';
+const SETTINGS_KEY = 'missta.settings';
 
 const defaults: AppSettings = {
   sensitiveMediaMode: 'blur-sensitive',

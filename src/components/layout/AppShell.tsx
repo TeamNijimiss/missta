@@ -267,4 +267,4 @@ function loadDismissedScopeUpgradePrompts(): Record<string, number> {
   }
 }
 
-const SCOPE_UPGRADE_DISMISSED_KEY = 'misssta.auth.scopeUpgradeDismissed';
+const SCOPE_UPGRADE_DISMISSED_KEY = 'missta.auth.scopeUpgradeDismissed';

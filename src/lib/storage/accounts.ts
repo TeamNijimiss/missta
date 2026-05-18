@@ -1,8 +1,8 @@
 import type { Account } from '@/lib/misskey/types';
 
-const ACCOUNTS_KEY = 'misssta.accounts';
-const CURRENT_ACCOUNT_KEY = 'misssta.currentAccountKey';
-const ACCOUNT_STORAGE_EVENT = 'misssta:accounts:changed';
+const ACCOUNTS_KEY = 'missta.accounts';
+const CURRENT_ACCOUNT_KEY = 'missta.currentAccountKey';
+const ACCOUNT_STORAGE_EVENT = 'missta:accounts:changed';
 
 export function listAccounts(): Account[] {
   const raw = localStorage.getItem(ACCOUNTS_KEY);

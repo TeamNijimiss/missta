@@ -1,5 +1,5 @@
 {
-  "name": "misssta-instant",
+  "name": "missta-instant",
   "compatibility_date": "2026-05-13",
   "assets": {
     "directory": "./dist",
@@ -8,6 +8,10 @@
   "routes": [
     {
       "pattern": "instant.nijimiss.app",
+      "custom_domain": true
+    },
+    {
+      "pattern": "missta.nijimiss.tools",
       "custom_domain": true
     }
   ]

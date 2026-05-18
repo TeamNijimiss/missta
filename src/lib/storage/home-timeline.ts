@@ -1,6 +1,6 @@
 import type { TimelineKind } from '@/services/timeline-service';
 
-const HOME_TIMELINE_VIEW_KEY_PREFIX = 'misssta.homeTimelineView';
+const HOME_TIMELINE_VIEW_KEY_PREFIX = 'missta.homeTimelineView';
 
 type HomeTimelineView = {
   timelineKind: TimelineKind;
