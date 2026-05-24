@@ -159,6 +159,7 @@ export function ProfilePage() {
   const followingCount = user.followingCount ?? 0;
   const isOwnProfile = Boolean(account && user.id === account.userId);
   const isFollowing = Boolean(user.isFollowing);
+  const originalProfileUrl = toOriginalProfileUrl(displayHost, user.username);
 
   const onToggleFollow = async () => {
     if (!service || followMutation.isPending || isOwnProfile) {
@@ -238,6 +239,9 @@ export function ProfilePage() {
               <button type="button" onClick={() => setIsListPickerOpen(true)} disabled={listsQuery.isPending || listsQuery.isError || (listsQuery.data?.length ?? 0) === 0}>
                 {listsQuery.isPending ? '読込中...' : 'リストに追加'}
               </button>
+              <a href={originalProfileUrl} target="_blank" rel="noreferrer noopener">
+                オリジナルを開く
+              </a>
             </>
           ) : null}
         </div>
@@ -330,4 +334,8 @@ function formatCount(count: number) {
   }
 
   return String(count);
+}
+
+function toOriginalProfileUrl(host: string, username: string): string {
+  return `https://${host}/@${encodeURIComponent(username)}`;
 }
