@@ -45,6 +45,7 @@ a {
   left: 0;
   top: 0;
   bottom: 0;
+  z-index: 40;
   width: 92px;
   border-right: 1px solid #dde1e7;
   background: #f2f3f5;
@@ -148,6 +149,7 @@ a {
   position: absolute;
   left: calc(100% + 10px);
   top: 50%;
+  z-index: 45;
   transform: translateY(-50%);
   border: 1px solid #d8dde4;
   border-radius: 8px;
