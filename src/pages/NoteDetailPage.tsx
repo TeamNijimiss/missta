@@ -1,6 +1,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
-import { MessageCircleHeart, SendHorizontal } from 'lucide-react';
+import { MessageCircleHeart, Paperclip, SendHorizontal } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { LoadMoreSection } from '@/components/feedback/LoadMoreSection';
 import { isRemoteUserHost } from '@/components/note/note-display';
@@ -311,125 +311,129 @@ export function NoteDetailPage() {
       {!isOnline ? <p className="form-error">オフライン中です。閲覧のみ可能です。</p> : null}
       {actionError ? <p className="form-error">{actionError}</p> : null}
 
-      <MediaNoteCard
-        note={note}
-        localHost={account.instanceHost}
-        emojiMap={emojiMapQuery.data}
-        sensitiveMediaMode={settings.sensitiveMediaMode}
-        highlightSensitiveMediaFrame={settings.highlightSensitiveMediaFrame}
-        revealedFileIds={revealedFileIds}
-        onRevealFile={onRevealFile}
-        actions={
-          <NoteCardActions
-            reactionCount={reactionCount}
-            replyCount={note.replyCount ?? 0}
-            liked={isLiked}
-            favorited={isFavorited}
-            reactionDisabled={reactionBusy || !isOnline}
-            favoriteDisabled={favoriteBusy || !isOnline}
-            onToggleReaction={() => {
-              void toggleReaction();
-            }}
-            onToggleFavorite={() => {
-              void toggleFavorite();
-            }}
-            replyIcon={<MessageCircleHeart size={15} />}
-          />
-        }
-      />
-
-      <section className="panel comments-panel">
-        <h2>
-          <MessageCircleHeart size={18} /> コメント
-        </h2>
-        <p className="comment-note">コメントはMisskey上ではリプライとして投稿されます。</p>
-
-        <form className="comment-form" onSubmit={handleSubmit}>
-          <textarea
-            value={commentText}
-            onChange={(event) => setCommentText(event.target.value)}
-            placeholder="コメントを入力"
-            rows={3}
-            disabled={replyMutation.isPending || !isOnline}
-          />
-          <button type="submit" disabled={!commentText.trim() || replyMutation.isPending || !isOnline}>
-            <SendHorizontal size={15} />
-            {replyMutation.isPending ? '投稿中...' : 'コメントを投稿'}
-          </button>
-          {replyMutation.isError ? (
-            <p className="form-error">{getErrorMessage(replyMutation.error, 'コメント投稿に失敗しました。')}</p>
-          ) : null}
-        </form>
-
-        {repliesQuery.isError ? (
-          <p className="form-error">{getErrorMessage(repliesQuery.error, 'コメント取得に失敗しました。')}</p>
-        ) : sortedReplies.length === 0 ? (
-          <p className="comment-empty">コメントはまだありません。</p>
-        ) : (
-          <>
-            <div className="comment-list">
-              {sortedReplies.map((reply) => (
-                <article key={reply.id} className="comment-item">
-                  <header>
-                    <strong>{reply.user.name ?? reply.user.username}</strong>
-                    <span>{formatUserHandle(reply.user.username, reply.user.host)}</span>
-                    <time dateTime={reply.createdAt}>{formatDateTimeJa(reply.createdAt)}</time>
-                  </header>
-                  <p>{reply.text ? <EmojiText text={reply.text} emojiMap={emojiMapQuery.data} replaceCustomEmoji={!isRemoteUserHost(reply.user.host, account.instanceHost)} /> : ''}</p>
-                  {reply.files.length > 0 ? <small>添付メディア: {reply.files.length} 件</small> : null}
-                </article>
-              ))}
-            </div>
-
-            <LoadMoreSection
-              hasNextPage={Boolean(repliesQuery.hasNextPage)}
-              isFetchingNextPage={repliesQuery.isFetchingNextPage}
-              onLoadMore={() => {
-                void repliesQuery.fetchNextPage();
+      <div className="note-detail-layout">
+        <MediaNoteCard
+          note={note}
+          localHost={account.instanceHost}
+          emojiMap={emojiMapQuery.data}
+          sensitiveMediaMode={settings.sensitiveMediaMode}
+          highlightSensitiveMediaFrame={settings.highlightSensitiveMediaFrame}
+          revealedFileIds={revealedFileIds}
+          onRevealFile={onRevealFile}
+          actions={
+            <NoteCardActions
+              reactionCount={reactionCount}
+              replyCount={note.replyCount ?? 0}
+              liked={isLiked}
+              favorited={isFavorited}
+              reactionDisabled={reactionBusy || !isOnline}
+              favoriteDisabled={favoriteBusy || !isOnline}
+              onToggleReaction={() => {
+                void toggleReaction();
               }}
-              endLabel="これ以上のコメントはありません。"
+              onToggleFavorite={() => {
+                void toggleFavorite();
+              }}
+              replyIcon={<MessageCircleHeart size={15} />}
             />
-          </>
-        )}
+          }
+        />
 
-        <section className="clip-actions">
-          <h3>クリップ</h3>
-          {clipsQuery.isPending ? (
-            <p className="auth-lead">クリップ一覧を取得しています...</p>
-          ) : clipsQuery.isError ? (
-            <p className="form-error">{getErrorMessage(clipsQuery.error, 'クリップ一覧の取得に失敗しました。')}</p>
-          ) : (clipsQuery.data?.length ?? 0) === 0 ? (
-            <p className="comment-empty">利用可能なクリップがありません。</p>
+        <section className="panel comments-panel">
+          <h2>
+            <MessageCircleHeart size={18} /> コメント
+          </h2>
+          <p className="comment-note">コメントはMisskey上ではリプライとして投稿されます。</p>
+
+          <form className="comment-form" onSubmit={handleSubmit}>
+            <textarea
+              value={commentText}
+              onChange={(event) => setCommentText(event.target.value)}
+              placeholder="コメントを入力"
+              rows={3}
+              disabled={replyMutation.isPending || !isOnline}
+            />
+            <button type="submit" disabled={!commentText.trim() || replyMutation.isPending || !isOnline}>
+              <SendHorizontal size={15} />
+              {replyMutation.isPending ? '投稿中...' : 'コメントを投稿'}
+            </button>
+            {replyMutation.isError ? (
+              <p className="form-error">{getErrorMessage(replyMutation.error, 'コメント投稿に失敗しました。')}</p>
+            ) : null}
+          </form>
+
+          {repliesQuery.isError ? (
+            <p className="form-error">{getErrorMessage(repliesQuery.error, 'コメント取得に失敗しました。')}</p>
+          ) : sortedReplies.length === 0 ? (
+            <p className="comment-empty">コメントはまだありません。</p>
           ) : (
-            <div className="clip-action-row">
-              <select value={selectedClipId} onChange={(event) => setSelectedClipId(event.target.value)}>
-                {(clipsQuery.data ?? []).map((clip) => (
-                  <option key={clip.id} value={clip.id}>
-                    {clip.name}
-                  </option>
+            <>
+              <div className="comment-list">
+                {sortedReplies.map((reply) => (
+                  <article key={reply.id} className="comment-item">
+                    <header>
+                      <strong>{reply.user.name ?? reply.user.username}</strong>
+                      <span>{formatUserHandle(reply.user.username, reply.user.host)}</span>
+                      <time dateTime={reply.createdAt}>{formatDateTimeJa(reply.createdAt)}</time>
+                    </header>
+                    <p>{reply.text ? <EmojiText text={reply.text} emojiMap={emojiMapQuery.data} replaceCustomEmoji={!isRemoteUserHost(reply.user.host, account.instanceHost)} /> : ''}</p>
+                    {reply.files.length > 0 ? <small>添付メディア: {reply.files.length} 件</small> : null}
+                  </article>
                 ))}
-              </select>
-              <button
-                type="button"
-                className="secondary-icon-button"
-                onClick={() => addToClipMutation.mutate()}
-                disabled={addToClipMutation.isPending || removeFromClipMutation.isPending || !selectedClipId || !isOnline}
-              >
-                追加
-              </button>
-              <button
-                type="button"
-                className="secondary-icon-button"
-                onClick={() => removeFromClipMutation.mutate()}
-                disabled={addToClipMutation.isPending || removeFromClipMutation.isPending || !selectedClipId || !isOnline}
-              >
-                削除
-              </button>
-            </div>
+              </div>
+
+              <LoadMoreSection
+                hasNextPage={Boolean(repliesQuery.hasNextPage)}
+                isFetchingNextPage={repliesQuery.isFetchingNextPage}
+                onLoadMore={() => {
+                  void repliesQuery.fetchNextPage();
+                }}
+                endLabel="これ以上のコメントはありません。"
+              />
+            </>
           )}
-          {clipMessage ? <p className="comment-note">{clipMessage}</p> : null}
+
+          <section className="clip-actions">
+            <h2>
+              <Paperclip size={18} /> クリップ
+            </h2>
+            {clipsQuery.isPending ? (
+              <p className="auth-lead">クリップ一覧を取得しています...</p>
+            ) : clipsQuery.isError ? (
+              <p className="form-error">{getErrorMessage(clipsQuery.error, 'クリップ一覧の取得に失敗しました。')}</p>
+            ) : (clipsQuery.data?.length ?? 0) === 0 ? (
+              <p className="comment-empty">利用可能なクリップがありません。</p>
+            ) : (
+              <div className="clip-action-row">
+                <select value={selectedClipId} onChange={(event) => setSelectedClipId(event.target.value)}>
+                  {(clipsQuery.data ?? []).map((clip) => (
+                    <option key={clip.id} value={clip.id}>
+                      {clip.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="secondary-icon-button"
+                  onClick={() => addToClipMutation.mutate()}
+                  disabled={addToClipMutation.isPending || removeFromClipMutation.isPending || !selectedClipId || !isOnline}
+                >
+                  追加
+                </button>
+                <button
+                  type="button"
+                  className="secondary-icon-button"
+                  onClick={() => removeFromClipMutation.mutate()}
+                  disabled={addToClipMutation.isPending || removeFromClipMutation.isPending || !selectedClipId || !isOnline}
+                >
+                  削除
+                </button>
+              </div>
+            )}
+            {clipMessage ? <p className="comment-note">{clipMessage}</p> : null}
+          </section>
         </section>
-      </section>
+      </div>
     </section>
   );
 }

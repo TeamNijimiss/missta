@@ -1070,6 +1070,16 @@ a {
   gap: 14px;
 }
 
+.note-detail-layout {
+  display: grid;
+  gap: 14px;
+}
+
+.note-detail-layout .comments-panel {
+  align-self: start;
+  min-width: 0;
+}
+
 .comments-panel h2 {
   margin: 0;
 }
@@ -1084,9 +1094,13 @@ a {
   margin-top: 14px;
   display: grid;
   gap: 8px;
+  min-width: 0;
 }
 
 .comment-form textarea {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   border: 1px solid #e6c2cc;
   border-radius: 10px;
   padding: 10px 12px;
@@ -1171,11 +1185,6 @@ a {
   margin-top: 16px;
   padding-top: 12px;
   border-top: 1px solid #f2d7de;
-}
-
-.clip-actions h3 {
-  margin: 0;
-  font-size: 0.98rem;
 }
 
 .clip-action-row {
@@ -2471,6 +2480,13 @@ a {
 
   .profile-actions {
     grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1080px) {
+  .note-detail-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+    align-items: start;
   }
 }
 
