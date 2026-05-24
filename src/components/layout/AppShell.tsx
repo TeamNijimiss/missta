@@ -51,8 +51,8 @@ export function AppShell({ children }: PropsWithChildren) {
     setShowScopeUpgradeModal(true);
   }, [account]);
 
-  const onClickActiveTab = (event: MouseEvent<HTMLAnchorElement>, isActive: boolean) => {
-    if (!isActive) {
+  const onClickActiveTab = (event: MouseEvent<HTMLAnchorElement>, isExactMatch: boolean) => {
+    if (!isExactMatch) {
       return;
     }
 
@@ -106,6 +106,7 @@ export function AppShell({ children }: PropsWithChildren) {
             const isActive = isProfileTab
               ? location.pathname === tab.to
               : location.pathname.startsWith(tab.to);
+            const isExactMatch = isSamePath(location.pathname, tab.to);
 
             return (
               <Link
@@ -114,7 +115,7 @@ export function AppShell({ children }: PropsWithChildren) {
                 className={isActive ? 'active' : ''}
                 aria-label={tab.label}
                 title={tab.label}
-                onClick={(event) => onClickActiveTab(event, isActive)}
+                onClick={(event) => onClickActiveTab(event, isExactMatch)}
               >
                 {isProfileTab && account?.avatarUrl ? (
                   <img className="side-nav-avatar-icon" src={account.avatarUrl} alt="" />
@@ -151,6 +152,7 @@ export function AppShell({ children }: PropsWithChildren) {
       <nav className="bottom-nav" aria-label="Global">
         {tabs.map((tab) => {
           const isActive = location.pathname.startsWith(tab.to);
+          const isExactMatch = isSamePath(location.pathname, tab.to);
           const Icon = tab.icon;
           const isComposeTab = tab.to === '/compose';
           return (
@@ -158,7 +160,7 @@ export function AppShell({ children }: PropsWithChildren) {
               key={tab.to}
               to={tab.to}
               className={`${isActive ? 'active' : ''} ${isComposeTab ? 'compose-tab' : ''}`.trim()}
-              onClick={(event) => onClickActiveTab(event, isActive)}
+              onClick={(event) => onClickActiveTab(event, isExactMatch)}
             >
               <Icon size={18} strokeWidth={isActive ? 2.4 : 2} />
               {tab.label}
@@ -201,6 +203,18 @@ function toLiveLabel(status: StreamingStatus): string {
   }
 
   return 'Offline';
+}
+
+function isSamePath(currentPath: string, targetPath: string): boolean {
+  return normalizePath(currentPath) === normalizePath(targetPath);
+}
+
+function normalizePath(pathname: string): string {
+  if (pathname.length > 1 && pathname.endsWith('/')) {
+    return pathname.slice(0, -1);
+  }
+
+  return pathname;
 }
 
 function toLiveTitle(status: StreamingStatus, retryInMs: number | null): string {
