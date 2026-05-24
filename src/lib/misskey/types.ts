@@ -3,6 +3,7 @@ export type MisskeyUser = {
   username: string;
   name: string | null;
   avatarUrl: string | null;
+  bannerUrl?: string | null;
   host?: string | null;
   isFollowing?: boolean;
   isFollowed?: boolean;

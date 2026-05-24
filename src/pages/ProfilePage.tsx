@@ -193,6 +193,12 @@ export function ProfilePage() {
   return (
     <section className="profile-page">
       <section className="profile-header">
+        {user.bannerUrl ? (
+          <div className="profile-banner">
+            <img src={user.bannerUrl} alt="" />
+          </div>
+        ) : null}
+
         <div className="profile-main">
           {user.avatarUrl ? <img src={user.avatarUrl} alt="" /> : <div className="avatar-fallback" />}
           <div className="profile-summary">
@@ -224,11 +230,7 @@ export function ProfilePage() {
         </div>
 
         <div className="profile-actions">
-          {isOwnProfile ? (
-            <button type="button" disabled>
-              あなたのプロフィール
-            </button>
-          ) : (
+          {!isOwnProfile ? (
             <>
               <button type="button" className={isFollowing ? 'active' : ''} onClick={() => void onToggleFollow()} disabled={followMutation.isPending}>
                 {followMutation.isPending ? '更新中...' : isFollowing ? 'フォロー中' : 'フォロー'}
@@ -237,7 +239,7 @@ export function ProfilePage() {
                 {listsQuery.isPending ? '読込中...' : 'リストに追加'}
               </button>
             </>
-          )}
+          ) : null}
         </div>
         {followError ? <p className="form-error">{followError}</p> : null}
         {!isOwnProfile && listsQuery.isError ? <p className="form-error">{getErrorMessage(listsQuery.error, 'リストの取得に失敗しました。')}</p> : null}
