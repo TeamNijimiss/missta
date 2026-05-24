@@ -72,7 +72,6 @@ export function FavoritesPage() {
         <h1>
           <Bookmark size={18} /> 保存
         </h1>
-        <p>お気に入りに追加した投稿 {notes.length} 件</p>
       </header>
 
       {notes.length === 0 ? (
