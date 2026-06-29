@@ -5,6 +5,7 @@ import { Virtuoso, type StateSnapshot, type VirtuosoHandle } from 'react-virtuos
 import { Link, useLocation } from 'react-router-dom';
 import { LoadMoreSection } from '@/components/feedback/LoadMoreSection';
 import { QueryErrorPanel } from '@/components/feedback/QueryErrorPanel';
+import { MediaNoteGrid } from '@/components/note/MediaNoteGrid';
 import { MediaNoteCard } from '@/components/note/MediaNoteCard';
 import { NoteCardActions } from '@/components/note/NoteCardActions';
 import { createMisskeyClient } from '@/services/create-misskey-client';
@@ -339,6 +340,13 @@ export function HomeTimelinePage() {
   const pageNotes = useMemo(() => timelineQuery.data?.pages.flatMap((page) => page.notes) ?? [], [timelineQuery.data]);
   const notes = useMemo(() => (canUseStreaming ? mergeById(liveNotes, pageNotes) : pageNotes), [canUseStreaming, liveNotes, pageNotes]);
   const notesById = useMemo(() => new Map(notes.map((note) => [note.id, note])), [notes]);
+  const timelineSelectOptions = useMemo(() => buildTimelineSelectOptions(userListsQuery.data ?? [], selectedListId), [selectedListId, userListsQuery.data]);
+  const selectedTimelineValue =
+    timelineKind === 'list'
+      ? selectedListId
+        ? `list:${selectedListId}`
+        : timelineSelectOptions.find((option) => option.value.startsWith('list:'))?.value ?? 'kind:home'
+      : `kind:${timelineKind}`;
   const localHost = account?.instanceHost ?? '';
   const currentPathKey = useMemo(() => `${location.pathname}${location.search}`, [location.pathname, location.search]);
   const shouldRestoreState = useMemo(() => shouldRestoreVirtuosoForPath(currentPathKey), [currentPathKey]);
@@ -555,6 +563,20 @@ export function HomeTimelinePage() {
     ]
   );
 
+  const onSelectTimeline = (value: string) => {
+    if (value.startsWith('list:')) {
+      setTimelineKind('list');
+      setSelectedListId(value.slice('list:'.length));
+      return;
+    }
+
+    const nextKind = value.replace(/^kind:/, '') as TimelineKind;
+    setTimelineKind(nextKind);
+    if (nextKind !== 'list') {
+      setSelectedListId('');
+    }
+  };
+
   if (!account) {
     return (
       <section className="panel">
@@ -582,19 +604,25 @@ export function HomeTimelinePage() {
 
   return (
     <section className="timeline-page">
-      <header className="timeline-header">
+      <header className={`timeline-header timeline-header-with-selector ${settings.timelineViewMode === 'swipe' ? 'timeline-header-overlay' : ''}`}>
         <h1>{TIMELINE_LABELS[timelineKind]}</h1>
-        <div className="timeline-switcher">
-          {(['home', 'local', 'global', 'list'] as const).map((kind) => (
-            <button
-              key={kind}
-              type="button"
-              className={`timeline-switch-button ${timelineKind === kind ? 'active' : ''}`}
-              onClick={() => setTimelineKind(kind)}
-            >
-              {TIMELINE_LABELS[kind]}
-            </button>
-          ))}
+        <div className="timeline-switcher timeline-select-row">
+          <label className="timeline-select-label" htmlFor="timeline-picker">
+            タイムライン
+          </label>
+          <select
+            id="timeline-picker"
+            className="timeline-select"
+            value={selectedTimelineValue}
+            onChange={(event) => onSelectTimeline(event.target.value)}
+            disabled={userListsQuery.isPending && timelineKind === 'list'}
+          >
+            {timelineSelectOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
           {canUseStreaming ? (
             <button type="button" className="streaming-reconnect-button" onClick={onReconnectTimeline} disabled={!isOnline || streamingStatus === 'connecting'}>
               <RotateCw size={14} />
@@ -602,23 +630,6 @@ export function HomeTimelinePage() {
             </button>
           ) : null}
         </div>
-        {timelineKind === 'list' ? (
-          <div className="timeline-list-picker">
-            <label htmlFor="timeline-list-picker">対象リスト</label>
-            <select
-              id="timeline-list-picker"
-              value={selectedListId}
-              onChange={(event) => setSelectedListId(event.target.value)}
-              disabled={userListsQuery.isPending || (userListsQuery.data?.length ?? 0) === 0}
-            >
-              {(userListsQuery.data ?? []).map((list) => (
-                <option key={list.id} value={list.id}>
-                  {list.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        ) : null}
       </header>
 
       {!isOnline ? <p className="form-error">オフライン中です。閲覧のみ可能です。</p> : null}
@@ -639,6 +650,23 @@ export function HomeTimelinePage() {
         <section className="panel">
           <p>メディア付きノートが見つかりませんでした。</p>
         </section>
+      ) : settings.timelineViewMode === 'swipe' ? (
+        <MediaNoteGrid
+          notes={notes}
+          galleryViewMode="swipe"
+          sensitiveMediaMode={settings.sensitiveMediaMode}
+          highlightSensitiveMediaFrame={settings.highlightSensitiveMediaFrame}
+          isNoteFavorited={(note) => getIsFavorited(note, favoriteOverrides)}
+          favoriteDisabledNoteIds={busyFavoriteIds}
+          onToggleFavorite={(note) => {
+            void toggleFavorite(note.id);
+          }}
+          hasMoreMedia={Boolean(timelineQuery.hasNextPage)}
+          isFetchingMoreMedia={timelineQuery.isFetchingNextPage}
+          onLoadMoreMedia={() => {
+            void timelineQuery.fetchNextPage();
+          }}
+        />
       ) : (
         <>
           <Virtuoso
@@ -741,6 +769,24 @@ const TIMELINE_LABELS: Record<TimelineKind, string> = {
   global: 'グローバル',
   list: 'リスト'
 };
+
+function buildTimelineSelectOptions(lists: MisskeyUserList[], selectedListId: string): Array<{ value: string; label: string }> {
+  const options = [
+    { value: 'kind:home', label: 'ホーム' },
+    { value: 'kind:local', label: 'ローカル' },
+    { value: 'kind:global', label: 'グローバル' }
+  ];
+
+  if (selectedListId && !lists.some((list) => list.id === selectedListId)) {
+    options.push({ value: `list:${selectedListId}`, label: 'リスト' });
+  }
+
+  lists.forEach((list) => {
+    options.push({ value: `list:${list.id}`, label: `リスト: ${list.name}` });
+  });
+
+  return options;
+}
 
 function getIsLiked(note: MediaNote, overrides: Record<string, boolean>): boolean {
   return overrides[note.id] ?? isHeartReaction(note.myReaction);

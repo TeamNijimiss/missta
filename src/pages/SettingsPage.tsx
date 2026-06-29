@@ -8,7 +8,7 @@ import {
   removeAccount,
   setCurrentAccountKey as setCurrentAccountStorageKey
 } from '@/lib/storage/accounts';
-import { loadSettings, saveSettings, type GalleryViewMode, type SensitiveMediaMode } from '@/lib/storage/settings';
+import { loadSettings, saveSettings, type GalleryViewMode, type SensitiveMediaMode, type TimelineViewMode } from '@/lib/storage/settings';
 
 export function SettingsPage() {
   const navigate = useNavigate();
@@ -124,6 +124,29 @@ export function SettingsPage() {
 
         <section className="settings-section">
           <h2>メディア表示</h2>
+
+          <section className="settings-subsection">
+            <h3>タイムライン</h3>
+            <div className="settings-radio-group" role="radiogroup" aria-label="タイムライン表示形式">
+              {TIMELINE_VIEW_OPTIONS.map((option) => (
+                <label key={option.value} className="settings-radio-item">
+                  <input
+                    type="radio"
+                    name="timeline-view-mode"
+                    value={option.value}
+                    checked={settings.timelineViewMode === option.value}
+                    onChange={(event) =>
+                      setSettings((prev) => ({
+                        ...prev,
+                        timelineViewMode: event.target.value as TimelineViewMode
+                      }))
+                    }
+                  />
+                  <span>{option.label}</span>
+                </label>
+              ))}
+            </div>
+          </section>
 
           <section className="settings-subsection">
             <h3>ギャラリー</h3>
@@ -292,6 +315,11 @@ const MEDIA_VISIBILITY_OPTIONS: Array<{ value: SensitiveMediaMode; label: string
 const GALLERY_VIEW_OPTIONS: Array<{ value: GalleryViewMode; label: string }> = [
   { value: 'grid', label: 'ギャラリーをグリッド表示（標準）' },
   { value: 'swipe', label: 'ギャラリーをスワイプ表示' }
+];
+
+const TIMELINE_VIEW_OPTIONS: Array<{ value: TimelineViewMode; label: string }> = [
+  { value: 'list', label: 'タイムラインをカード一覧表示（標準）' },
+  { value: 'swipe', label: 'タイムラインをスワイプ表示' }
 ];
 
 function AccountAvatar({ avatarUrl }: { avatarUrl: string | null }) {
