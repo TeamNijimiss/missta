@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Bookmark } from 'lucide-react';
 import { LoadMoreSection } from '@/components/feedback/LoadMoreSection';
@@ -8,12 +8,15 @@ import { createMisskeyClient } from '@/services/create-misskey-client';
 import { FavoriteService } from '@/services/favorite-service';
 import { useAppSettings } from '@/lib/hooks/use-app-settings';
 import { useCurrentAccount } from '@/lib/hooks/use-current-account';
+import type { MediaNote } from '@/lib/misskey/types';
 
 const PAGE_SIZE = 20;
 
 export function FavoritesPage() {
   const account = useCurrentAccount();
   const settings = useAppSettings();
+  const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
+  const [busyFavoriteIds, setBusyFavoriteIds] = useState<Set<string>>(new Set());
   const client = useMemo(() => createMisskeyClient(account), [account]);
 
   const service = useMemo(() => {
@@ -66,6 +69,33 @@ export function FavoritesPage() {
 
   const notes = favoritesQuery.data?.pages.flatMap((page) => page.notes) ?? [];
 
+  const toggleFavorite = async (note: MediaNote) => {
+    if (!service || busyFavoriteIds.has(note.id)) {
+      return;
+    }
+
+    const isFavorited = favoriteOverrides[note.id] ?? true;
+    const nextFavorited = !isFavorited;
+    setBusyFavoriteIds((prev) => new Set(prev).add(note.id));
+    setFavoriteOverrides((prev) => ({ ...prev, [note.id]: nextFavorited }));
+
+    try {
+      if (nextFavorited) {
+        await service.addFavorite(note.id);
+      } else {
+        await service.removeFavorite(note.id);
+      }
+    } catch {
+      setFavoriteOverrides((prev) => ({ ...prev, [note.id]: isFavorited }));
+    } finally {
+      setBusyFavoriteIds((prev) => {
+        const next = new Set(prev);
+        next.delete(note.id);
+        return next;
+      });
+    }
+  };
+
   return (
     <section className="timeline-page">
       <header className="timeline-header">
@@ -81,8 +111,19 @@ export function FavoritesPage() {
       ) : (
         <MediaNoteGrid
           notes={notes}
+          galleryViewMode={settings.galleryViewMode}
           sensitiveMediaMode={settings.sensitiveMediaMode}
           highlightSensitiveMediaFrame={settings.highlightSensitiveMediaFrame}
+          isNoteFavorited={(note) => favoriteOverrides[note.id] ?? true}
+          favoriteDisabledNoteIds={busyFavoriteIds}
+          onToggleFavorite={(note) => {
+            void toggleFavorite(note);
+          }}
+          hasMoreMedia={Boolean(favoritesQuery.hasNextPage)}
+          isFetchingMoreMedia={favoritesQuery.isFetchingNextPage}
+          onLoadMoreMedia={() => {
+            void favoritesQuery.fetchNextPage();
+          }}
         />
       )}
       <LoadMoreSection

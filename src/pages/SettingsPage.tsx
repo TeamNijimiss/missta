@@ -8,7 +8,7 @@ import {
   removeAccount,
   setCurrentAccountKey as setCurrentAccountStorageKey
 } from '@/lib/storage/accounts';
-import { loadSettings, saveSettings, type SensitiveMediaMode } from '@/lib/storage/settings';
+import { loadSettings, saveSettings, type GalleryViewMode, type SensitiveMediaMode } from '@/lib/storage/settings';
 
 export function SettingsPage() {
   const navigate = useNavigate();
@@ -124,67 +124,100 @@ export function SettingsPage() {
 
         <section className="settings-section">
           <h2>メディア表示</h2>
-          <div className="settings-radio-group" role="radiogroup" aria-label="センシティブメディア表示モード">
-            {MEDIA_VISIBILITY_OPTIONS.map((option) => (
-              <label key={option.value} className="settings-radio-item">
-                <input
-                  type="radio"
-                  name="sensitive-media-mode"
-                  value={option.value}
-                  checked={settings.sensitiveMediaMode === option.value}
-                  onChange={(event) =>
-                    setSettings((prev) => ({
-                      ...prev,
-                      sensitiveMediaMode: event.target.value as SensitiveMediaMode
-                    }))
-                  }
-                />
-                <span>{option.label}</span>
-              </label>
-            ))}
-          </div>
 
-          <label className="settings-switch">
-            <input
-              type="checkbox"
-              checked={settings.highlightSensitiveMediaFrame}
-              onChange={(event) => setSettings((prev) => ({ ...prev, highlightSensitiveMediaFrame: event.target.checked }))}
-            />
-            <span className="settings-switch-track" aria-hidden="true">
-              <span className="settings-switch-thumb" />
-            </span>
-            <span className="settings-switch-label">センシティブメディアをオレンジ枠で強調表示</span>
-          </label>
+          <section className="settings-subsection">
+            <h3>ギャラリー</h3>
+            <div className="settings-radio-group" role="radiogroup" aria-label="ギャラリー表示形式">
+              {GALLERY_VIEW_OPTIONS.map((option) => (
+                <label key={option.value} className="settings-radio-item">
+                  <input
+                    type="radio"
+                    name="gallery-view-mode"
+                    value={option.value}
+                    checked={settings.galleryViewMode === option.value}
+                    onChange={(event) =>
+                      setSettings((prev) => ({
+                        ...prev,
+                        galleryViewMode: event.target.value as GalleryViewMode
+                      }))
+                    }
+                  />
+                  <span>{option.label}</span>
+                </label>
+              ))}
+            </div>
+          </section>
+
+          <section className="settings-subsection">
+            <h3>センシティブメディア</h3>
+            <div className="settings-radio-group" role="radiogroup" aria-label="センシティブメディア表示モード">
+              {MEDIA_VISIBILITY_OPTIONS.map((option) => (
+                <label key={option.value} className="settings-radio-item">
+                  <input
+                    type="radio"
+                    name="sensitive-media-mode"
+                    value={option.value}
+                    checked={settings.sensitiveMediaMode === option.value}
+                    onChange={(event) =>
+                      setSettings((prev) => ({
+                        ...prev,
+                        sensitiveMediaMode: event.target.value as SensitiveMediaMode
+                      }))
+                    }
+                  />
+                  <span>{option.label}</span>
+                </label>
+              ))}
+            </div>
+
+            <label className="settings-switch">
+              <input
+                type="checkbox"
+                checked={settings.highlightSensitiveMediaFrame}
+                onChange={(event) => setSettings((prev) => ({ ...prev, highlightSensitiveMediaFrame: event.target.checked }))}
+              />
+              <span className="settings-switch-track" aria-hidden="true">
+                <span className="settings-switch-thumb" />
+              </span>
+              <span className="settings-switch-label">センシティブメディアをオレンジ枠で強調表示</span>
+            </label>
+          </section>
         </section>
 
         <section className="settings-section">
           <h2>リアクション表示</h2>
-          <label className="settings-switch">
-            <input
-              type="checkbox"
-              checked={settings.aggregateAllReactionsAsHeart}
-              onChange={(event) => setSettings((prev) => ({ ...prev, aggregateAllReactionsAsHeart: event.target.checked }))}
-            />
-            <span className="settings-switch-track" aria-hidden="true">
-              <span className="settings-switch-thumb" />
-            </span>
-            <span className="settings-switch-label">すべてのリアクションを❤として集約表示</span>
-          </label>
+          <section className="settings-subsection">
+            <h3>集計</h3>
+            <label className="settings-switch">
+              <input
+                type="checkbox"
+                checked={settings.aggregateAllReactionsAsHeart}
+                onChange={(event) => setSettings((prev) => ({ ...prev, aggregateAllReactionsAsHeart: event.target.checked }))}
+              />
+              <span className="settings-switch-track" aria-hidden="true">
+                <span className="settings-switch-thumb" />
+              </span>
+              <span className="settings-switch-label">すべてのリアクションを❤として集約表示</span>
+            </label>
+          </section>
         </section>
 
         <section className="settings-section">
           <h2>読み込み</h2>
-          <label className="settings-switch">
-            <input
-              type="checkbox"
-              checked={settings.autoLoadMore}
-              onChange={(event) => setSettings((prev) => ({ ...prev, autoLoadMore: event.target.checked }))}
-            />
-            <span className="settings-switch-track" aria-hidden="true">
-              <span className="settings-switch-thumb" />
-            </span>
-            <span className="settings-switch-label">一覧を自動で続き読み込みする</span>
-          </label>
+          <section className="settings-subsection">
+            <h3>一覧</h3>
+            <label className="settings-switch">
+              <input
+                type="checkbox"
+                checked={settings.autoLoadMore}
+                onChange={(event) => setSettings((prev) => ({ ...prev, autoLoadMore: event.target.checked }))}
+              />
+              <span className="settings-switch-track" aria-hidden="true">
+                <span className="settings-switch-thumb" />
+              </span>
+              <span className="settings-switch-label">一覧を自動で続き読み込みする</span>
+            </label>
+          </section>
         </section>
 
         <button className="primary-icon-button" type="button" onClick={onSave}>
@@ -254,6 +287,11 @@ const MEDIA_VISIBILITY_OPTIONS: Array<{ value: SensitiveMediaMode; label: string
   { value: 'blur-sensitive', label: 'センシティブのみブラー表示（標準）' },
   { value: 'show-all', label: 'センシティブを常に表示' },
   { value: 'blur-all', label: 'すべてのメディアをブラー表示' }
+];
+
+const GALLERY_VIEW_OPTIONS: Array<{ value: GalleryViewMode; label: string }> = [
+  { value: 'grid', label: 'ギャラリーをグリッド表示（標準）' },
+  { value: 'swipe', label: 'ギャラリーをスワイプ表示' }
 ];
 
 function AccountAvatar({ avatarUrl }: { avatarUrl: string | null }) {

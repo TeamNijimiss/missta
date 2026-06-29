@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { LoadMoreSection } from '@/components/feedback/LoadMoreSection';
@@ -6,8 +6,10 @@ import { QueryErrorPanel } from '@/components/feedback/QueryErrorPanel';
 import { MediaNoteGrid } from '@/components/note/MediaNoteGrid';
 import { ClipService } from '@/services/clip-service';
 import { createMisskeyClient } from '@/services/create-misskey-client';
+import { FavoriteService } from '@/services/favorite-service';
 import { useAppSettings } from '@/lib/hooks/use-app-settings';
 import { useCurrentAccount } from '@/lib/hooks/use-current-account';
+import type { MediaNote } from '@/lib/misskey/types';
 
 const PAGE_SIZE = 20;
 
@@ -15,6 +17,8 @@ export function ClipDetailPage() {
   const account = useCurrentAccount();
   const settings = useAppSettings();
   const { clipId } = useParams();
+  const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
+  const [busyFavoriteIds, setBusyFavoriteIds] = useState<Set<string>>(new Set());
   const client = useMemo(() => createMisskeyClient(account), [account]);
 
   const service = useMemo(() => {
@@ -23,6 +27,14 @@ export function ClipDetailPage() {
     }
 
     return new ClipService(client);
+  }, [client]);
+
+  const favoriteService = useMemo(() => {
+    if (!client) {
+      return null;
+    }
+
+    return new FavoriteService(client);
   }, [client]);
 
   const notesQuery = useInfiniteQuery({
@@ -71,6 +83,33 @@ export function ClipDetailPage() {
 
   const notes = notesQuery.data?.pages.flatMap((page) => page.notes) ?? [];
 
+  const toggleFavorite = async (note: MediaNote) => {
+    if (!favoriteService || busyFavoriteIds.has(note.id)) {
+      return;
+    }
+
+    const isFavorited = favoriteOverrides[note.id] ?? Boolean(note.isFavorited);
+    const nextFavorited = !isFavorited;
+    setBusyFavoriteIds((prev) => new Set(prev).add(note.id));
+    setFavoriteOverrides((prev) => ({ ...prev, [note.id]: nextFavorited }));
+
+    try {
+      if (nextFavorited) {
+        await favoriteService.addFavorite(note.id);
+      } else {
+        await favoriteService.removeFavorite(note.id);
+      }
+    } catch {
+      setFavoriteOverrides((prev) => ({ ...prev, [note.id]: isFavorited }));
+    } finally {
+      setBusyFavoriteIds((prev) => {
+        const next = new Set(prev);
+        next.delete(note.id);
+        return next;
+      });
+    }
+  };
+
   return (
     <section className="timeline-page">
       <header className="timeline-header">
@@ -85,8 +124,23 @@ export function ClipDetailPage() {
       ) : (
         <MediaNoteGrid
           notes={notes}
+          galleryViewMode={settings.galleryViewMode}
           sensitiveMediaMode={settings.sensitiveMediaMode}
           highlightSensitiveMediaFrame={settings.highlightSensitiveMediaFrame}
+          isNoteFavorited={(note) => favoriteOverrides[note.id] ?? Boolean(note.isFavorited)}
+          favoriteDisabledNoteIds={busyFavoriteIds}
+          onToggleFavorite={
+            favoriteService
+              ? (note) => {
+                  void toggleFavorite(note);
+                }
+              : undefined
+          }
+          hasMoreMedia={Boolean(notesQuery.hasNextPage)}
+          isFetchingMoreMedia={notesQuery.isFetchingNextPage}
+          onLoadMoreMedia={() => {
+            void notesQuery.fetchNextPage();
+          }}
         />
       )}
       <LoadMoreSection

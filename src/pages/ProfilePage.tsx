@@ -5,10 +5,12 @@ import { LoadMoreSection } from '@/components/feedback/LoadMoreSection';
 import { QueryErrorPanel } from '@/components/feedback/QueryErrorPanel';
 import { MediaNoteGrid } from '@/components/note/MediaNoteGrid';
 import { createMisskeyClient } from '@/services/create-misskey-client';
+import { FavoriteService } from '@/services/favorite-service';
 import { UserService } from '@/services/user-service';
 import { useAppSettings } from '@/lib/hooks/use-app-settings';
 import { useCurrentAccount } from '@/lib/hooks/use-current-account';
 import { getErrorMessage } from '@/lib/misskey/errors';
+import type { MediaNote } from '@/lib/misskey/types';
 
 const PAGE_SIZE = 20;
 
@@ -20,6 +22,8 @@ export function ProfilePage() {
   const [selectedListId, setSelectedListId] = useState('');
   const [listActionMessage, setListActionMessage] = useState<string | null>(null);
   const [isListPickerOpen, setIsListPickerOpen] = useState(false);
+  const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
+  const [busyFavoriteIds, setBusyFavoriteIds] = useState<Set<string>>(new Set());
   const client = useMemo(() => createMisskeyClient(account), [account]);
 
   const service = useMemo(() => {
@@ -28,6 +32,14 @@ export function ProfilePage() {
     }
 
     return new UserService(client);
+  }, [client]);
+
+  const favoriteService = useMemo(() => {
+    if (!client) {
+      return null;
+    }
+
+    return new FavoriteService(client);
   }, [client]);
 
   const userQuery = useQuery({
@@ -191,6 +203,33 @@ export function ProfilePage() {
     }
   };
 
+  const toggleFavorite = async (note: MediaNote) => {
+    if (!favoriteService || busyFavoriteIds.has(note.id)) {
+      return;
+    }
+
+    const isFavorited = favoriteOverrides[note.id] ?? Boolean(note.isFavorited);
+    const nextFavorited = !isFavorited;
+    setBusyFavoriteIds((prev) => new Set(prev).add(note.id));
+    setFavoriteOverrides((prev) => ({ ...prev, [note.id]: nextFavorited }));
+
+    try {
+      if (nextFavorited) {
+        await favoriteService.addFavorite(note.id);
+      } else {
+        await favoriteService.removeFavorite(note.id);
+      }
+    } catch {
+      setFavoriteOverrides((prev) => ({ ...prev, [note.id]: isFavorited }));
+    } finally {
+      setBusyFavoriteIds((prev) => {
+        const next = new Set(prev);
+        next.delete(note.id);
+        return next;
+      });
+    }
+  };
+
   return (
     <section className="profile-page">
       <section className="profile-header">
@@ -306,8 +345,23 @@ export function ProfilePage() {
         <>
           <MediaNoteGrid
             notes={notes}
+            galleryViewMode={settings.galleryViewMode}
             sensitiveMediaMode={settings.sensitiveMediaMode}
             highlightSensitiveMediaFrame={settings.highlightSensitiveMediaFrame}
+            isNoteFavorited={(note) => favoriteOverrides[note.id] ?? Boolean(note.isFavorited)}
+            favoriteDisabledNoteIds={busyFavoriteIds}
+            onToggleFavorite={
+              favoriteService
+                ? (note) => {
+                    void toggleFavorite(note);
+                  }
+                : undefined
+            }
+            hasMoreMedia={Boolean(notesQuery.hasNextPage)}
+            isFetchingMoreMedia={notesQuery.isFetchingNextPage}
+            onLoadMoreMedia={() => {
+              void notesQuery.fetchNextPage();
+            }}
             emptyState={
               <section className="panel">
                 <p>{notesQuery.hasNextPage ? 'メディア付き投稿を追加で検索できます。' : 'メディア付き投稿はありません。'}</p>
