@@ -481,7 +481,11 @@ const MediaSwipeCard = memo(function MediaSwipeCard({
             className={`media-swipe-favorite-button ${isFavorited ? 'active' : ''}`}
             aria-label={isFavorited ? '保存を解除' : '保存'}
             disabled={favoriteDisabled}
-            onClick={onToggleFavorite}
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleFavorite();
+            }}
           >
             <Bookmark size={21} fill={isFavorited ? 'currentColor' : 'none'} />
           </button>
@@ -491,7 +495,9 @@ const MediaSwipeCard = memo(function MediaSwipeCard({
           className="media-swipe-open-link"
           to={noteLink}
           aria-label="投稿を開く"
-          onClick={() => {
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
             setVirtuosoRestoreIntent(currentPathKey);
           }}
         >
