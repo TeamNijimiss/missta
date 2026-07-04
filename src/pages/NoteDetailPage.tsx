@@ -1,6 +1,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
-import { MessageCircleHeart, Paperclip, SendHorizontal } from 'lucide-react';
+import { ExternalLink, MessageCircleHeart, Paperclip, SendHorizontal } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { LoadMoreSection } from '@/components/feedback/LoadMoreSection';
 import { isRemoteUserHost } from '@/components/note/note-display';
@@ -296,6 +296,7 @@ export function NoteDetailPage() {
   const isLiked = likedOverride ?? isHeartReaction(note.myReaction);
   const isFavorited = favoritedOverride ?? Boolean(note.isFavorited);
   const reactionCount = reactionCountOverride ?? Math.max(0, getDisplayedReactionCount(note, settings.aggregateAllReactionsAsHeart));
+  const originalNoteUrl = toOriginalNoteUrl(note, account.instanceHost);
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -321,21 +322,26 @@ export function NoteDetailPage() {
           revealedFileIds={revealedFileIds}
           onRevealFile={onRevealFile}
           actions={
-            <NoteCardActions
-              reactionCount={reactionCount}
-              replyCount={note.replyCount ?? 0}
-              liked={isLiked}
-              favorited={isFavorited}
-              reactionDisabled={reactionBusy || !isOnline}
-              favoriteDisabled={favoriteBusy || !isOnline}
-              onToggleReaction={() => {
-                void toggleReaction();
-              }}
-              onToggleFavorite={() => {
-                void toggleFavorite();
-              }}
-              replyIcon={<MessageCircleHeart size={15} />}
-            />
+            <>
+              <NoteCardActions
+                reactionCount={reactionCount}
+                replyCount={note.replyCount ?? 0}
+                liked={isLiked}
+                favorited={isFavorited}
+                reactionDisabled={reactionBusy || !isOnline}
+                favoriteDisabled={favoriteBusy || !isOnline}
+                onToggleReaction={() => {
+                  void toggleReaction();
+                }}
+                onToggleFavorite={() => {
+                  void toggleFavorite();
+                }}
+                replyIcon={<MessageCircleHeart size={15} />}
+              />
+              <a className="secondary-icon-button" href={originalNoteUrl} target="_blank" rel="noreferrer noopener">
+                <ExternalLink size={15} /> オリジナルを開く
+              </a>
+            </>
           }
         />
 
@@ -436,4 +442,20 @@ export function NoteDetailPage() {
       </div>
     </section>
   );
+}
+
+function toOriginalNoteUrl(note: { id: string; uri?: string | null; url?: string | null; user: { host?: string | null } }, localHost: string): string {
+  if (isHttpUrl(note.url)) {
+    return note.url;
+  }
+
+  if (isHttpUrl(note.uri)) {
+    return note.uri;
+  }
+
+  return `https://${note.user.host ?? localHost}/notes/${encodeURIComponent(note.id)}`;
+}
+
+function isHttpUrl(value: string | null | undefined): value is string {
+  return typeof value === 'string' && /^https?:\/\//i.test(value);
 }

@@ -31,6 +31,8 @@ export type MisskeyFile = {
 
 export type MediaNote = {
   id: string;
+  uri?: string | null;
+  url?: string | null;
   createdAt: string;
   user: MisskeyUser;
   text: string | null;
