@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type MouseEvent, type PropsWithChildren } from 'react';
-import { Bookmark, House, Paperclip, PlusSquare, Settings, UserRound } from 'lucide-react';
+import { Bookmark, House, Paperclip, PlusSquare, Search, Settings, UserRound } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { InstallPromptBanner } from '@/components/pwa/InstallPromptBanner';
+import { NoteSearchModal } from '@/components/search/NoteSearchModal';
 import { appConfig } from '@/lib/app-config';
 import { useCurrentAccount } from '@/lib/hooks/use-current-account';
 import { useLiveConnectionStore } from '@/lib/hooks/use-live-connection-store';
@@ -30,6 +31,7 @@ export function AppShell({ children }: PropsWithChildren) {
   const [showScopeUpgradeModal, setShowScopeUpgradeModal] = useState(false);
   const [scopeUpgradeError, setScopeUpgradeError] = useState<string | null>(null);
   const [startingScopeUpgrade, setStartingScopeUpgrade] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
 
   useEffect(() => {
     if (!account) {
@@ -50,6 +52,10 @@ export function AppShell({ children }: PropsWithChildren) {
 
     setShowScopeUpgradeModal(true);
   }, [account]);
+
+  useEffect(() => {
+    setShowSearchModal(false);
+  }, [location.pathname]);
 
   const onClickActiveTab = (event: MouseEvent<HTMLAnchorElement>, isExactMatch: boolean) => {
     if (!isExactMatch) {
@@ -100,6 +106,10 @@ export function AppShell({ children }: PropsWithChildren) {
           <span className="side-nav-tooltip">{appConfig.appName}</span>
         </Link>
         <nav className="side-nav-links">
+          <button type="button" className="side-nav-action" aria-label="ノート検索" title="ノート検索" onClick={() => setShowSearchModal(true)}>
+            <Search size={22} strokeWidth={2.1} />
+            <span className="side-nav-tooltip">検索</span>
+          </button>
           {desktopTabs.map((tab) => {
             const Icon = tab.icon;
             const isProfileTab = tab.to.startsWith('/users/');
@@ -143,6 +153,11 @@ export function AppShell({ children }: PropsWithChildren) {
             {appConfig.appName}
           </Link>
           <p className="top-bar-subtitle">{account ? `${account.username}@${account.instanceHost}` : 'Misskey Media Client'}</p>
+        </div>
+        <div className="top-bar-actions">
+          <button type="button" className="top-bar-icon-button" aria-label="ノート検索" title="ノート検索" onClick={() => setShowSearchModal(true)}>
+            <Search size={20} />
+          </button>
         </div>
       </header>
       <InstallPromptBanner />
@@ -189,6 +204,8 @@ export function AppShell({ children }: PropsWithChildren) {
           </section>
         </div>
       ) : null}
+
+      <NoteSearchModal isOpen={showSearchModal} onClose={() => setShowSearchModal(false)} />
     </div>
   );
 }

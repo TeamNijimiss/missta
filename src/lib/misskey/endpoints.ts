@@ -7,6 +7,7 @@ export const ENDPOINTS = {
   notesGlobalTimeline: 'notes/global-timeline',
   notesUserListTimeline: 'notes/user-list-timeline',
   notesShow: 'notes/show',
+  notesSearch: 'notes/search',
   notesSearchByTag: 'notes/search-by-tag',
   notesReplies: 'notes/replies',
   notesCreate: 'notes/create',
