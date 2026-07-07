@@ -542,6 +542,7 @@ export function HomeTimelinePage() {
           favoriteDisabled={busyFavoriteIds.has(note.id) || !isOnline}
           onToggleReaction={toggleReaction}
           onToggleFavorite={toggleFavorite}
+          onBeforeDetailNavigate={captureTimelineVirtuosoState}
         />
       </div>
     ),
@@ -559,6 +560,7 @@ export function HomeTimelinePage() {
       settings.aggregateAllReactionsAsHeart,
       settings.highlightSensitiveMediaFrame,
       settings.sensitiveMediaMode,
+      captureTimelineVirtuosoState,
       toggleFavorite,
       toggleReaction
     ]
@@ -737,6 +739,7 @@ type HomeTimelineCardItemProps = {
   favoriteDisabled: boolean;
   onToggleReaction: (noteId: string) => Promise<void>;
   onToggleFavorite: (noteId: string) => Promise<void>;
+  onBeforeDetailNavigate: () => void;
 };
 
 const HomeTimelineCardItem = memo(function HomeTimelineCardItem({
@@ -754,7 +757,8 @@ const HomeTimelineCardItem = memo(function HomeTimelineCardItem({
   reactionDisabled,
   favoriteDisabled,
   onToggleReaction,
-  onToggleFavorite
+  onToggleFavorite,
+  onBeforeDetailNavigate
 }: HomeTimelineCardItemProps) {
   const displayedReactionCount = reactionCount ?? Math.max(0, getDisplayedReactionCount(note, aggregateAllReactionsAsHeart));
 
@@ -781,6 +785,7 @@ const HomeTimelineCardItem = memo(function HomeTimelineCardItem({
           onToggleFavorite={() => {
             void onToggleFavorite(note.id);
           }}
+          onBeforeDetailNavigate={onBeforeDetailNavigate}
           detailTo={`/notes/${note.id}`}
           detailLabel="コメントを見る"
         />

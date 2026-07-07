@@ -14,6 +14,7 @@ type NoteCardActionsProps = {
   favoriteDisabled?: boolean;
   onToggleReaction?: () => void;
   onToggleFavorite?: () => void;
+  onBeforeDetailNavigate?: () => void;
   replyIcon?: ReactNode;
 };
 
@@ -28,6 +29,7 @@ export const NoteCardActions = memo(function NoteCardActions({
   favoriteDisabled = false,
   onToggleReaction,
   onToggleFavorite,
+  onBeforeDetailNavigate,
   replyIcon
 }: NoteCardActionsProps) {
   const location = useLocation();
@@ -59,6 +61,7 @@ export const NoteCardActions = memo(function NoteCardActions({
           className="inline-link"
           to={detailTo}
           onClick={() => {
+            onBeforeDetailNavigate?.();
             setVirtuosoRestoreIntent(`${location.pathname}${location.search}`);
           }}
         >

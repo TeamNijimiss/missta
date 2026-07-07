@@ -18,6 +18,7 @@ import { VirtuosoGrid, type GridComponents, type GridStateSnapshot } from 'react
 import { Link, useLocation } from 'react-router-dom';
 import type { MediaNote, MisskeyFile } from '@/lib/misskey/types';
 import type { GalleryViewMode, SensitiveMediaMode } from '@/lib/storage/settings';
+import { getMediaSwipeRestoreState, removeMediaSwipeRestoreState, setMediaSwipeRestoreState } from '@/lib/media/swipe-restore-state';
 import { consumeVirtuosoRestoreIntent, setVirtuosoRestoreIntent, shouldRestoreVirtuosoForPath } from '@/lib/virtuoso/restore-intent';
 import { getVirtuosoGridState, setVirtuosoGridState } from '@/lib/virtuoso/restore-state';
 
@@ -106,6 +107,21 @@ export function MediaNoteGrid({
 
     setActiveSwipeIndex(0);
   }, [activeSwipeIndex, mediaEntries.length]);
+
+  useEffect(() => {
+    if (galleryViewMode !== 'swipe' || mediaEntries.length === 0) {
+      return;
+    }
+
+    const restoreState = getMediaSwipeRestoreState(currentPathKey);
+    if (!restoreState) {
+      return;
+    }
+
+    const restoredIndex = mediaEntries.findIndex((entry) => entry.noteId === restoreState.noteId && entry.file.id === restoreState.fileId);
+    setActiveSwipeIndex(restoredIndex >= 0 ? restoredIndex : Math.min(Math.max(restoreState.index, 0), mediaEntries.length - 1));
+    removeMediaSwipeRestoreState(currentPathKey);
+  }, [currentPathKey, galleryViewMode, mediaEntries]);
 
   const onRevealSensitive = useCallback((fileId: string) => {
     setRevealedFileIds((prev) => {
@@ -430,13 +446,18 @@ const MediaSwipeCard = memo(function MediaSwipeCard({
 
   const onLinkClick = useCallback((event: MouseEvent<HTMLAnchorElement>) => {
     if (!suppressClickRef.current) {
+      setMediaSwipeRestoreState(currentPathKey, {
+        noteId: entry.noteId,
+        fileId: entry.file.id,
+        index
+      });
       setVirtuosoRestoreIntent(currentPathKey);
       return;
     }
 
     event.preventDefault();
     suppressClickRef.current = false;
-  }, [currentPathKey]);
+  }, [currentPathKey, entry.file.id, entry.noteId, index]);
 
   return (
     <article className="media-swipe-item" aria-label={`メディア ${index + 1}/${total}`}>
@@ -498,6 +519,11 @@ const MediaSwipeCard = memo(function MediaSwipeCard({
           onPointerDown={(event) => event.stopPropagation()}
           onClick={(event) => {
             event.stopPropagation();
+            setMediaSwipeRestoreState(currentPathKey, {
+              noteId: entry.noteId,
+              fileId: entry.file.id,
+              index
+            });
             setVirtuosoRestoreIntent(currentPathKey);
           }}
         >
