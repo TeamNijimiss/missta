@@ -17,6 +17,7 @@ import { useCurrentAccount } from '@/lib/hooks/use-current-account';
 import { useEmojiMapQuery } from '@/lib/hooks/use-emoji-map-query';
 import { useLiveConnectionStore } from '@/lib/hooks/use-live-connection-store';
 import { useOnlineStatus } from '@/lib/hooks/use-online-status';
+import { useShellHeaderControls } from '@/lib/hooks/use-shell-header-controls';
 import { normalizeMediaNote } from '@/lib/misskey/normalize';
 import { getDisplayedReactionCount, isHeartReaction } from '@/lib/misskey/reactions';
 import { loadHomeTimelineView, saveHomeTimelineView } from '@/lib/storage/home-timeline';
@@ -576,6 +577,31 @@ export function HomeTimelinePage() {
       setSelectedListId('');
     }
   };
+
+  const mobileSwipeHeaderControls = useMemo(() => {
+    if (settings.timelineViewMode !== 'swipe') {
+      return null;
+    }
+
+    return (
+      <select
+        id="timeline-picker-mobile"
+        className="timeline-select top-bar-timeline-select"
+        value={selectedTimelineValue}
+        onChange={(event) => onSelectTimeline(event.target.value)}
+        disabled={userListsQuery.isPending && timelineKind === 'list'}
+        aria-label="タイムライン"
+      >
+        {timelineSelectOptions.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    );
+  }, [selectedTimelineValue, settings.timelineViewMode, timelineKind, timelineSelectOptions, userListsQuery.isPending]);
+
+  useShellHeaderControls(mobileSwipeHeaderControls);
 
   if (!account) {
     return (

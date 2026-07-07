@@ -258,6 +258,17 @@ a {
   flex: 0 0 auto;
 }
 
+.top-bar-page-controls {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.top-bar-timeline-select {
+  max-width: 44vw;
+  padding-block: 7px;
+}
+
 .top-bar-icon-button,
 .search-close-button {
   width: 38px;
@@ -2770,14 +2781,7 @@ a {
   }
 
   body.media-swipe-active .timeline-header-overlay {
-    position: fixed;
-    top: 70px;
-    right: 10px;
-    left: auto;
-    z-index: 45;
-    display: flex;
-    justify-content: flex-end;
-    gap: 6px;
+    display: none;
   }
 
   body.media-swipe-active .timeline-header-overlay h1 {

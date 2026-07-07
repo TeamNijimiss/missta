@@ -6,6 +6,7 @@ import { NoteSearchModal } from '@/components/search/NoteSearchModal';
 import { appConfig } from '@/lib/app-config';
 import { useCurrentAccount } from '@/lib/hooks/use-current-account';
 import { useLiveConnectionStore } from '@/lib/hooks/use-live-connection-store';
+import { ShellHeaderControlsProvider, useShellHeaderControlsValue } from '@/lib/hooks/use-shell-header-controls';
 import { pushRecentInstance, savePendingMiAuth } from '@/lib/storage/auth';
 import { AUTH_SCOPE_VERSION, AuthService } from '@/services/auth-service';
 import type { StreamingStatus } from '@/lib/misskey/streaming';
@@ -20,6 +21,14 @@ const tabs = [
 ];
 
 export function AppShell({ children }: PropsWithChildren) {
+  return (
+    <ShellHeaderControlsProvider>
+      <AppShellContent>{children}</AppShellContent>
+    </ShellHeaderControlsProvider>
+  );
+}
+
+function AppShellContent({ children }: PropsWithChildren) {
   const location = useLocation();
   const account = useCurrentAccount();
   const authService = useMemo(() => new AuthService(), []);
@@ -32,6 +41,7 @@ export function AppShell({ children }: PropsWithChildren) {
   const [scopeUpgradeError, setScopeUpgradeError] = useState<string | null>(null);
   const [startingScopeUpgrade, setStartingScopeUpgrade] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
+  const headerControls = useShellHeaderControlsValue();
 
   useEffect(() => {
     if (!account) {
@@ -155,6 +165,7 @@ export function AppShell({ children }: PropsWithChildren) {
           <p className="top-bar-subtitle">{account ? `${account.username}@${account.instanceHost}` : 'Misskey Media Client'}</p>
         </div>
         <div className="top-bar-actions">
+          {headerControls ? <div className="top-bar-page-controls">{headerControls}</div> : null}
           <button type="button" className="top-bar-icon-button" aria-label="ノート検索" title="ノート検索" onClick={() => setShowSearchModal(true)}>
             <Search size={20} />
           </button>
