@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { PropsWithChildren } from 'react';
+import { ThemeProvider } from '@/lib/hooks/use-theme';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -11,5 +12,9 @@ const queryClient = new QueryClient({
 });
 
 export function Providers({ children }: PropsWithChildren) {
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  return (
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </ThemeProvider>
+  );
 }

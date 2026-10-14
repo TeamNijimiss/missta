@@ -2,26 +2,31 @@ import { useState } from 'react';
 import { LogOut, RefreshCw, Save, Trash2, UserRound } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCurrentAccount } from '@/lib/hooks/use-current-account';
+import { useTheme } from '@/lib/hooks/use-theme';
 import {
   getCurrentAccountKey,
   listAccounts,
   removeAccount,
   setCurrentAccountKey as setCurrentAccountStorageKey
 } from '@/lib/storage/accounts';
-import { loadSettings, saveSettings, type GalleryViewMode, type SensitiveMediaMode, type TimelineViewMode } from '@/lib/storage/settings';
+import { loadSettings, saveSettings, type GalleryViewMode, type SensitiveMediaMode, type TimelineViewMode, type ThemeMode } from '@/lib/storage/settings';
 
 export function SettingsPage() {
   const navigate = useNavigate();
   const account = useCurrentAccount();
+  const { themeMode, setThemeMode } = useTheme();
   const [accounts, setAccounts] = useState(() => listAccounts());
   const [currentAccountKey, setCurrentAccountKey] = useState(() => getCurrentAccountKey());
-  const [settings, setSettings] = useState(() => loadSettings());
+  const [settings, setSettings] = useState(() => {
+    const { themeMode: _, ...editableSettings } = loadSettings();
+    return editableSettings;
+  });
   const [saved, setSaved] = useState(false);
   const [isClearingCache, setIsClearingCache] = useState(false);
   const [cacheClearError, setCacheClearError] = useState<string | null>(null);
 
   const onSave = () => {
-    saveSettings(settings);
+    saveSettings({ ...settings, themeMode: loadSettings().themeMode });
     setSaved(true);
     window.setTimeout(() => setSaved(false), 1200);
   };
@@ -121,6 +126,31 @@ export function SettingsPage() {
         ) : (
           <p className="auth-lead">ログイン情報がありません。</p>
         )}
+
+        <section className="settings-section">
+          <h2>外観</h2>
+          <section className="settings-subsection">
+            <h3>テーマ</h3>
+            <div className="settings-radio-group" role="radiogroup" aria-label="テーマ" aria-describedby="theme-description" aria-keyshortcuts="d">
+              {THEME_OPTIONS.map((option) => (
+                <label key={option.value} className="settings-radio-item">
+                  <input
+                    type="radio"
+                    name="theme-mode"
+                    value={option.value}
+                    checked={themeMode === option.value}
+                    onChange={() => setThemeMode(option.value)}
+                  />
+                  <span>{option.label}</span>
+                </label>
+              ))}
+            </div>
+            <p id="theme-description" className="settings-theme-help">
+              選択するとすぐに反映・保存されます。「自動」は端末の配色設定に合わせます。
+              入力欄以外で <kbd>d</kbd> キーを押すとライト／ダークを切り替えられます。「自動」に戻すにはここで選択してください。
+            </p>
+          </section>
+        </section>
 
         <section className="settings-section">
           <h2>メディア表示</h2>
@@ -305,6 +335,12 @@ export function SettingsPage() {
     </section>
   );
 }
+
+const THEME_OPTIONS: Array<{ value: ThemeMode; label: string }> = [
+  { value: 'auto', label: '自動（端末の設定に合わせる）' },
+  { value: 'light', label: 'ライト' },
+  { value: 'dark', label: 'ダーク' }
+];
 
 const MEDIA_VISIBILITY_OPTIONS: Array<{ value: SensitiveMediaMode; label: string }> = [
   { value: 'blur-sensitive', label: 'センシティブのみブラー表示（標準）' },
